@@ -70,7 +70,6 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data)
       gst_buffer_unmap (buffer, &map);
       gst_sample_unref (sample);
       gst_buffer_unref (buffer);
-     gst_app_sink_is_eos(sink);
     return GST_FLOW_OK;
 }
 
@@ -211,7 +210,10 @@ int main(int argc, char *argv[]) {
   callbacks.new_preroll=&new_preroll;
   callbacks.new_sample=&new_buffer;
 
-  gst_app_sink_set_callbacks (GST_APP_SINK(sink_app), &callbacks, NULL, NULL);
+//  gst_app_sink_set_callbacks (GST_APP_SINK(sink_app), &callbacks, NULL, NULL);
+    g_object_set (sink_app, "emit-signals", TRUE, NULL);
+    g_signal_connect (sink_app, "new-sample", G_CALLBACK (new_buffer), NULL);
+
   guint  bus_watch_id = gst_bus_add_watch (bus, bus_call, NULL);
 
   ret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
