@@ -59,7 +59,8 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data)
 void print_buffer (GstBuffer *buffer, const char *title)
 {
 }
-  GstElement *pipeline, *source, *sink,*csp,*queue,*enc;
+
+
 
 static gboolean bus_call (GstBus *bus, GstMessage *msg, gpointer user_data)
 {
@@ -112,29 +113,29 @@ int main(int argc, char *argv[]) {
   GstBus *bus;
   GstMessage *msg;
   GstStateChangeReturn ret;
-  
+  GstElement *pipeline, *source, *sink_app, *sink_file ,*csp,*queue,*enc;
   /* Initialize GStreamer */
   gst_init (&argc, &argv);
-/*   
+
 
   source = gst_element_factory_make ("v4l2src", "source");
   queue = gst_element_factory_make ("queue", "queue");
   enc	= gst_element_factory_make ("jpegenc", "jpegenc");
-  sink = gst_element_factory_make ("appsink", "appsink");
-//  sink = gst_element_factory_make ("filesink", "filesink");
+  sink_app = gst_element_factory_make ("appsink", "appsink");
+  sink_file = gst_element_factory_make ("filesink", "filesink");
   g_object_set( G_OBJECT(queue), "max-size-buffers", 3, NULL);
 
-//  g_object_set( G_OBJECT(source), "device", "/dev/video0", NULL);
+  g_object_set( G_OBJECT(source), "device", "/dev/video0", NULL);
 //  g_object_set( G_OBJECT(source), "num-buffers", "-1", NULL);
-  g_object_set( G_OBJECT(source), "capture-mode", 0, NULL); 
-  g_object_set( G_OBJECT(source), "fps-n", "30", NULL); 
+//  g_object_set( G_OBJECT(source), "capture-mode", 0, NULL); 
+//  g_object_set( G_OBJECT(source), "fps-n", "30", NULL); 
 
    
 
   pipeline = gst_pipeline_new ("cam-pipeline");
 
 
-  gst_bin_add_many (GST_BIN (pipeline), source,queue,sink, NULL);
+  gst_bin_add_many (GST_BIN (pipeline), source,queue,sink_app, NULL);
 
 
   if (!pipeline) {
@@ -148,7 +149,12 @@ int main(int argc, char *argv[]) {
     return -1;
   }
    
-  if (!sink) {
+  if (!sink_app) {
+    g_printerr ("Not sink element could be created.\n");
+    return -1;
+  }
+
+  if (!sink_file) {
     g_printerr ("Not sink element could be created.\n");
     return -1;
   }
@@ -158,23 +164,23 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-   if(!gst_element_link_many (source,queue,sink, NULL)) {
+   if(!gst_element_link_many (source,queue,sink_app, NULL)) {
          printf("Cannot link gstreamer elements");
          exit (1);
     }
-  bus = gst_element_get_bus (pipeline);
 
+  bus = gst_element_get_bus (pipeline);
   ret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
 
 
-   GMainLoop *loop = g_main_loop_new (NULL, FALSE);    
-   g_main_loop_run(loop);
+  GMainLoop *loop = g_main_loop_new (NULL, FALSE);    
+  g_main_loop_run(loop);
 
 
   gst_object_unref (bus);
   gst_element_set_state (pipeline, GST_STATE_NULL);
   gst_object_unref (pipeline);
 
-*/
+
   return 0;
 }
