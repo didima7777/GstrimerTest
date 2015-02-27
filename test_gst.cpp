@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <gst/app/gstappsrc.h>
-#include <gst/app/gstappbuffer.h>
+//#include <gst/app/gstappbuffer.h>
 #include <gst/app/gstappsink.h>  
 #include <opencv2/opencv.hpp>
 
