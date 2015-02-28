@@ -16,7 +16,6 @@ static void convert(unsigned char *src,char *dst,int size) {
 	for(int i = 0, j=0; i < size * 3; i+=6, j+=4)  //+2
 	{
 
-//	    m_RGB->imageData[i] = pData[j+0] ;
 	    dst[i] = src[j+0] ;
 	    dst[i+1] =src[j+0];
 	    dst[i+2] = src[j+0];
@@ -75,42 +74,14 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data)
         unsigned char *pData = (unsigned char*)map.data;
       	m_RGB = cvCreateImage(cvSize(width,height), IPL_DEPTH_8U, 3);
 	convert(pData,m_RGB->imageData,height*width);
-/*
-	for(int i = 0, j=0; i < width*height * 3; i+=6, j+=4)  //+2
-	{
-
-	    m_RGB->imageData[i] = pData[j+0] ;//+ pData[j+3]*((1 - 0.299)/0.615);
-	    m_RGB->imageData[i+1] = pData[j+0];// - pData[j+1]*((0.114*(1-0.114))/(0.436*0.587)) - pData[j+3]*((0.299*(1 - 0.299))/(0.615*0.587));
-	    m_RGB->imageData[i+2] = pData[j+0];// + pData[j+1]*((1 - 0.114)/0.436);
-	    m_RGB->imageData[i+3] = pData[j+2];// + pData[j+3]*((1 - 0.299)/0.615);
-	    m_RGB->imageData[i+4] = pData[j+2];// - pData[j+1]*((0.114*(1-0.114))/(0.436*0.587)) - pData[j+3]*((0.299*(1 - 0.299))/(0.615*0.587));
-	    m_RGB->imageData[i+5] = pData[j+2];// + pData[j+1]*((1 - 0.114)/0.436);
-	    //printf("%d %d %d %d\n",pData[j],pData[j+1],pData[j+2],pData[j+3]);
-	}
-*/
-      cv::Mat mat_img(m_RGB);
-      cv::imwrite( "my_bitmap.bmp", mat_img);		
-      gst_buffer_unmap (buffer, &map);
-      gst_buffer_unref(buffer);
-     printf("\n",map.size);
+ 	cv::Mat mat_img(m_RGB);
+        cv::imwrite( "my_bitmap.bmp", mat_img);
+	mat_img.release();
+	cvReleaseImage(&m_RGB);
+        gst_buffer_unmap (buffer, &map);
+        gst_buffer_unref(buffer);
+        printf("\n",map.size);
     }
-/*
-   frame = cvCreateImage(cvSize(width,height), IPL_DEPTH_8U,2);	
-   m_RGB = cvCreateImage(cvSize(width,height), IPL_DEPTH_8U, 3);
-
-   printf("####	app buffer   ####\n");	
-   GstSample *sample =  gst_app_sink_pull_sample(sink);
-   GstBuffer *buffer =  gst_sample_get_buffer (sample);
-   gst_buffer_map (buffer, &map, GST_MAP_READ);
-   char *pData=new char[480*640*3];
-   if (buffer) print_buffer(sink, "buffer"); else printf("NULL new buffer");
-
-  cv::Mat mat_img(m_RGB);
-  cv::imwrite( "my_bitmap.bmp", mat_img);		
-  gst_buffer_unmap (buffer, &map);
-  gst_sample_unref (sample);
-  gst_buffer_unref (buffer);
-*/
     return GST_FLOW_OK;
 }
 
