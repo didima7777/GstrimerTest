@@ -1,1 +1,1 @@
-Tets to use Gstrimer
+Test to use Gstrimer
