@@ -12,6 +12,19 @@ GMainLoop *loop;
 
 void print_buffer(GstAppSink *sink, const char *title);
 
+static void convert(unsigned char *src,char *dst,int size) {
+	for(int i = 0, j=0; i < size * 3; i+=6, j+=4)  //+2
+	{
+
+	    dst[i] = src[j+0] ;
+	    dst[i+1] =src[j+0];
+	    dst[i+2] = src[j+0];
+	    dst[i+3] = src[j+2];
+	    dst[i+4] = src[j+2];
+	    dst[i+5] = src[j+2];
+	}
+};
+
 static void new_oes (GstAppSink *sink, gpointer user_data)
 { 
       printf("###### eos #######\n");	
@@ -27,11 +40,12 @@ static void new_oes (GstAppSink *sink, gpointer user_data)
  
 static GstFlowReturn new_preroll (GstAppSink *sink, gpointer user_data)
 {
-      printf("#####  new_preroll #######!!!");	
+     printf("#####  new_preroll #######!!!");	
      GstSample *buffer =  gst_app_sink_pull_preroll (sink);
-     if (buffer) print_buffer(sink, "preroll");
-
+     if (buffer) {
+	print_buffer(sink, "preroll");
 	gst_sample_unref (buffer);
+     }
     return GST_FLOW_OK;
 }
 
@@ -44,32 +58,30 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data)
    int width=640;
    GstMapInfo map;
 
-   frame = cvCreateImage(cvSize(width,height), IPL_DEPTH_8U,2);	
-   m_RGB = cvCreateImage(cvSize(width,height), IPL_DEPTH_8U, 3);
+    GstSample* sample;
+    GstBuffer* buffer;
+    GstCaps* caps;
+    printf("#");
+    sample =  gst_app_sink_pull_sample(sink);
+//    frame = cvCreateImage(cvSize(width,height), IPL_DEPTH_8U,2);	
+    //m_RGB = cvCreateImage(cvSize(width,height), IPL_DEPTH_8U, 3);
 
-   printf("####	app buffer   ####\n");	
-   GstSample *sample =  gst_app_sink_pull_sample(sink);
-   GstBuffer *buffer =  gst_sample_get_buffer (sample);
-   gst_buffer_map (buffer, &map, GST_MAP_READ);
-   char *pData=new char[480*640*3];
-   if (buffer) print_buffer(sink, "buffer"); else printf("NULL new buffer");
- 
-
-	for(int i = 0, j=0; i < width*height * 3; i+=6, j+=2)  //+2
-	{
-	    m_RGB->imageData[i] = pData[j+0] ;
-	    m_RGB->imageData[i+1] = pData[j+0];
-	    m_RGB->imageData[i+2] = pData[j+0];
-	    m_RGB->imageData[i+3] = pData[j+1];
-	    m_RGB->imageData[i+4] = pData[j+1];
-	    m_RGB->imageData[i+5] = pData[j+1];
-	}
-
-	  cv::Mat mat_img(m_RGB);
-	//cv::imwrite( "my_bitmap.bmp", mat_img);		
-      gst_buffer_unmap (buffer, &map);
-      gst_sample_unref (sample);
-      gst_buffer_unref (buffer);
+    if (sample) {
+      buffer = gst_sample_get_buffer(sample);
+      caps = gst_sample_get_caps(sample);
+      gst_buffer_map (buffer, &map, GST_MAP_READ);
+        printf("size = %d  ",map.size);
+        unsigned char *pData = (unsigned char*)map.data;
+      	m_RGB = cvCreateImage(cvSize(width,height), IPL_DEPTH_8U, 3);
+	convert(pData,m_RGB->imageData,height*width);
+ 	cv::Mat mat_img(m_RGB);
+        cv::imwrite( "my_bitmap.bmp", mat_img);
+	mat_img.release();
+	cvReleaseImage(&m_RGB);
+        gst_buffer_unmap (buffer, &map);
+        gst_buffer_unref(buffer);
+        printf("\n",map.size);
+    }
     return GST_FLOW_OK;
 }
 
@@ -112,7 +124,7 @@ static gboolean bus_call (GstBus *bus, GstMessage *msg, gpointer user_data)
 	printf("[%s]: %s %s\n", GST_OBJECT_NAME (msg->src), err->message, debug);
         g_free (debug);
         g_error_free (err);
- 	exit(1);
+// 	exit(1);
         break;
     }
    case GST_MESSAGE_EOS:
@@ -168,7 +180,7 @@ int main(int argc, char *argv[]) {
   pipeline = gst_pipeline_new ("cam-pipeline");
 
 
-  gst_bin_add_many (GST_BIN (pipeline), source,queue,sink_app, NULL);
+  gst_bin_add_many (GST_BIN (pipeline), source,sink_app, NULL);
 
 
   if (!pipeline) {
@@ -197,7 +209,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-   if(!gst_element_link_many (source,queue,sink_app, NULL)) {
+   if(!gst_element_link_many (source,sink_app, NULL)) {
          printf("Cannot link gstreamer elements");
          exit (1);
     }
@@ -210,9 +222,9 @@ int main(int argc, char *argv[]) {
   callbacks.new_preroll=&new_preroll;
   callbacks.new_sample=&new_buffer;
 
-//  gst_app_sink_set_callbacks (GST_APP_SINK(sink_app), &callbacks, NULL, NULL);
-    g_object_set (sink_app, "emit-signals", TRUE, NULL);
-    g_signal_connect (sink_app, "new-sample", G_CALLBACK (new_buffer), NULL);
+   gst_app_sink_set_callbacks (GST_APP_SINK(sink_app), &callbacks, NULL, NULL);
+//    g_object_set (sink_app, "emit-signals", TRUE, NULL);
+//    g_signal_connect (sink_app, "new-sample", G_CALLBACK (new_buffer), NULL);
 
   guint  bus_watch_id = gst_bus_add_watch (bus, bus_call, NULL);
 
