@@ -77,14 +77,15 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
             if (m_RGB==NULL) m_RGB = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3);
             if (buf_tmp ==NULL) buf_tmp=new unsigned char[width*height*3];
             memcpy((void*)buf_tmp,(void*)pData,width*height*2);
-            convert(buf_tmp, m_RGB->imageData, height * width);
+//            convert(buf_tmp, m_RGB->imageData, height * width);
 //        cv::Mat mat_img(m_RGB);
 //        cv::imwrite("my_bitmap.bmp", mat_img);
 //        mat_img.release();
 //        cvReleaseImage(&m_RGB);
 
         gst_buffer_unmap(buffer, &map);
-        gst_buffer_unref(buffer);
+//        gst_buffer_unref(buffer);
+        gst_sample_unref(sample);
         printf("\n");
     }
     g_mutex_unlock(&mutex);
@@ -360,7 +361,7 @@ int main(int argc, char *argv[]) {
     //g_signal_connect (sink_app, "new-sample", G_CALLBACK (new_buffer), NULL);
     //g_signal_connect (udpsink, "client-added", G_CALLBACK (&add_cliden), NULL);
     
-    //guint bus_watch_id = gst_bus_add_watch(bus, bus_call, NULL);  
+    guint bus_watch_id = gst_bus_add_watch(bus, bus_call, NULL);  
     
     //gst_bus_add_signal_watch (bus);
     //g_signal_connect (bus, "message", G_CALLBACK (bus_call), &data);
