@@ -219,8 +219,10 @@ void almost_c99_signal_handler(int signum)
       fputs("Caught SIGILL: illegal instruction\n", stderr);
       break;
     case SIGINT:
-      fputs("Caught SIGINT: interactive attention signal, probably a ctrl+c\n",
+      fputs("Caught SIGINT: interactive attention signal, probably a ctrl+c!!!!\n",
             stderr);
+      g_main_loop_quit(loop);
+      return ;
       break;
     case SIGSEGV:
       fputs("Caught SIGSEGV: segfault\n", stderr);

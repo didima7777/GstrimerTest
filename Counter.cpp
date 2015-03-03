@@ -74,7 +74,13 @@ Counter::~Counter()
 
 void Counter::bgSubtractionCycle(cv::Mat& inpFrame)
 {
+	clock_t start;
+	clock_t diff1;
+	start=clock();
 	cv::split(inpFrame, inputFrameCh);
+	diff1=clock()-start;
+	cout<<"split : "<<(float)diff1/CLOCKS_PER_SEC<<endl;
+
 	for (int i = 0; i < 3; i++)
 	{
 		//cv::imwrite("1.bmp", inputFrameCh[i]);	
