@@ -19,15 +19,15 @@ void print_buffer(GstAppSink *sink, const char *title);
 
 
 static void convert(unsigned char *src, char *dst, int size) {
-    for (int i = 0, j = 0; i < size * 3; i += 6, j += 4) //+2
+    for (int i = 0, j = 0; i < size * 3; i += 6, j += 2) //+2
     {
 
         dst[i] = src[j + 0];
         dst[i + 1] = src[j + 0];
         dst[i + 2] = src[j + 0];
-        dst[i + 3] = src[j + 2];
-        dst[i + 4] = src[j + 2];
-        dst[i + 5] = src[j + 2];
+        dst[i + 3] = src[j + 1];
+        dst[i + 4] = src[j + 1];
+        dst[i + 5] = src[j + 1];
     }
 };
 
@@ -54,8 +54,8 @@ unsigned char *buf_tmp = NULL;
 GMutex mutex;
 
 static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
-    int height = 480;//1944;
-    int width = 640;//2592;
+    int height =1944; //480;//1944;
+    int width = 2592;//640;//2592;
     static int  cnt=0;
 
     GstMapInfo map;
@@ -76,12 +76,12 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
             unsigned char *pData = (unsigned char*) map.data;
             if (m_RGB==NULL) m_RGB = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3);
             if (buf_tmp ==NULL) buf_tmp=new unsigned char[width*height*3];
-            memcpy((void*)buf_tmp,(void*)pData,width*height*2);
+            memcpy((void*)buf_tmp,(void*)pData,width*height*1.5);
             convert(buf_tmp, m_RGB->imageData, height * width);
-//        cv::Mat mat_img(m_RGB);
-//        cv::imwrite("my_bitmap.bmp", mat_img);
-//        mat_img.release();
-//        cvReleaseImage(&m_RGB);
+	    cv::Mat mat_img(m_RGB);
+            cv::imwrite("my_bitmap.bmp", mat_img);
+            mat_img.release();
+//          cvReleaseImage(&m_RGB);
 
         gst_buffer_unmap(buffer, &map);
         gst_buffer_unref(buffer);
