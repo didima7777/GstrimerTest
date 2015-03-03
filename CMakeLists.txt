@@ -3,7 +3,7 @@ project (Tutorial)
  cmake_minimum_required(VERSION 2.8)
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS "-std=c++11")  ## standart
-#set(CMAKE_CXX_FLAGS "-O3")        ## Optimize
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")        ## Optimize
 set(CMAKE_EXE_LINKER_FLAGS "-s ")  ## Strip binary
 
 #set(MYLIBS "-lgstapp-1.0 -lgstbase-1.0 -lgstreamer-1.0")

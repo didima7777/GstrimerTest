@@ -259,6 +259,8 @@ int main(int argc, char *argv[]) {
     std::string pathToConfig = "confZone1.txt";
     init_counting(pathToConfig);
 
+    printf("Start gstreamer 0.1 and Counting\n");	
+
     source = gst_element_factory_make("imxv4l2src", "source");
     
     queue1 = gst_element_factory_make("queue", "queue1");
@@ -396,6 +398,8 @@ int main(int argc, char *argv[]) {
     gst_element_set_state(pipeline_v1, GST_STATE_NULL);
     gst_object_unref(pipeline_v1);
 
+    cvReleaseImage(&m_RGB);
+    delete buf_tmp;
 
     return 0;
 }
