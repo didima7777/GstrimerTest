@@ -19,15 +19,15 @@ void print_buffer(GstAppSink *sink, const char *title);
 
 
 static void convert(unsigned char *src, char *dst, int size) {
-    for (int i = 0, j = 0; i < size * 3; i += 6, j += 4) //+2
+    for (int i = 0, j = 0; i < size * 3; i += 6, j += 2) //+2
     {
 
         dst[i] = src[j + 0];
         dst[i + 1] = src[j + 0];
         dst[i + 2] = src[j + 0];
-        dst[i + 3] = src[j + 2];
-        dst[i + 4] = src[j + 2];
-        dst[i + 5] = src[j + 2];
+        dst[i + 3] = src[j + 1];
+        dst[i + 4] = src[j + 1];
+        dst[i + 5] = src[j + 1];
     }
 };
 
@@ -63,7 +63,7 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
     GstSample* sample;
     GstBuffer* buffer;
     GstCaps* caps;
-    printf("# %d #\n",cnt++);
+//    printf("# %d #\n",cnt++);
     
     g_mutex_lock(&mutex);
     sample = gst_app_sink_pull_sample(sink);
@@ -72,12 +72,12 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
             buffer = gst_sample_get_buffer(sample);
             caps = gst_sample_get_caps(sample);
             gst_buffer_map(buffer, &map, GST_MAP_READ);
-            printf("size = %d  ", map.size);
+//            printf("size = %d  ", map.size);
             unsigned char *pData = (unsigned char*) map.data;
             if (m_RGB==NULL) m_RGB = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3);
             if (buf_tmp ==NULL) buf_tmp=new unsigned char[width*height*3];
-            memcpy((void*)buf_tmp,(void*)pData,width*height*2);
-//            convert(buf_tmp, m_RGB->imageData, height * width);
+            memcpy((void*)buf_tmp,(void*)pData,width*height*1.5);
+            convert(buf_tmp, m_RGB->imageData, height * width);
 //        cv::Mat mat_img(m_RGB);
 //        cv::imwrite("my_bitmap.bmp", mat_img);
 //        mat_img.release();
@@ -86,7 +86,7 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
         gst_buffer_unmap(buffer, &map);
 //        gst_buffer_unref(buffer);
         gst_sample_unref(sample);
-        printf("\n");
+//        printf("\n");
     }
     g_mutex_unlock(&mutex);
     return GST_FLOW_OK;
@@ -184,6 +184,8 @@ void almost_c99_signal_handler(int signum)
     case SIGINT:
       fputs("Caught SIGINT: interactive attention signal, probably a ctrl+c\n",
             stderr);
+      g_main_loop_quit(loop);	
+      return;
       break;
     case SIGSEGV:
       fputs("Caught SIGSEGV: segfault\n", stderr);
