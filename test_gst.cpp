@@ -214,8 +214,8 @@ int main(int argc, char *argv[]) {
   signal(SIGSEGV, almost_c99_signal_handler);
   signal(SIGTERM, almost_c99_signal_handler);
     
+    printf("use gstreamer 1.0\n");
     gst_init(&argc, &argv);
-
 
     source = gst_element_factory_make("imxv4l2src", "source");
     
