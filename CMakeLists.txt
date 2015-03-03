@@ -5,8 +5,8 @@ set(CMAKE_BUILD_TYPE Release)
 #set(CMAKE_CXX_FLAGS "-O3")        ## Optimize
 #set(CMAKE_EXE_LINKER_FLAGS "-s")  ## Strip binary
 
-set(MYLIBS "-lgstapp-1.0 -lgstbase-1.0 -lgstreamer-1.0")
-#set(MYLIBS "${MYLIBS} -lgstreamer-0.10 -lgstapp-0.10 -lgstbase-0.10")  
+#set(MYLIBS "-lgstapp-1.0 -lgstbase-1.0 -lgstreamer-1.0")
+set(MYLIBS "-lgstreamer-0.10 -lgstapp-0.10 -lgstbase-0.10")  
 set(MYLIBS "${MYLIBS} -lgobject-2.0 -lgmodule-2.0 -pthread -lgthread-2.0 -pthread -lglib-2.0 -lxml2")
 set(MYLIBS "${MYLIBS} -pthread -std=c++11 -fpermissive")
 set(MYLIBS "${MYLIBS} -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_flann -lopencv_features2d -lopencv_calib3d -lopencv_video")		
@@ -19,8 +19,8 @@ set(OpenCV_INCLUDE_DIRS2 "/opt/poky/1.6.1/sysroots/cortexa9hf-vfp-neon-poky-linu
 
 include_directories(${SDKTARGETSYSROOT}/usr/src/kernel/include/uapi)
 include_directories(${SDKTARGETSYSROOT}/usr/src/kernel/include)
-#include_directories(${SDKTARGETSYSROOT}/usr/include/gstreamer-0.10)
-include_directories(${SDKTARGETSYSROOT}/usr/include/gstreamer-1.0)
+include_directories(${SDKTARGETSYSROOT}/usr/include/gstreamer-0.10)
+#include_directories(${SDKTARGETSYSROOT}/usr/include/gstreamer-1.0)
 include_directories(${SDKTARGETSYSROOT}/usr/include/glib-2.0)
 include_directories(${SDKTARGETSYSROOT}/usr/lib/glib-2.0/include)
 include_directories(${SDKTARGETSYSROOT}/usr/include/libxml2)
