@@ -19,8 +19,8 @@ set(OpenCV_INCLUDE_DIRS2 "/opt/poky/1.6.1/sysroots/cortexa9hf-vfp-neon-poky-linu
 
 include_directories(${SDKTARGETSYSROOT}/usr/src/kernel/include/uapi)
 include_directories(${SDKTARGETSYSROOT}/usr/src/kernel/include)
-include_directories(${SDKTARGETSYSROOT}/usr/include/gstreamer-0.10)
-#include_directories(${SDKTARGETSYSROOT}/usr/include/gstreamer-1.0)
+#include_directories(${SDKTARGETSYSROOT}/usr/include/gstreamer-0.10)
+include_directories(${SDKTARGETSYSROOT}/usr/include/gstreamer-1.0)
 include_directories(${SDKTARGETSYSROOT}/usr/include/glib-2.0)
 include_directories(${SDKTARGETSYSROOT}/usr/lib/glib-2.0/include)
 include_directories(${SDKTARGETSYSROOT}/usr/include/libxml2)
