@@ -389,9 +389,12 @@ int main(int argc, char *argv[]) {
 
     g_main_loop_run(loop);
 
+    gst_object_unref(tee_q1_pad);
+    gst_object_unref(tee_q2_pad);
     gst_object_unref(q1_pad);
     gst_object_unref(q2_pad);
     gst_object_unref(bus);
+
     gst_element_set_state(pipeline_v1, GST_STATE_NULL);
     gst_object_unref(pipeline_v1);
 
