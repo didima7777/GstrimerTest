@@ -75,13 +75,13 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
     g_mutex_lock(&mutex);
     buffer =  gst_app_sink_pull_buffer (sink);
     if (buffer) {
-//          printf("size %d \n",GST_BUFFER_SIZE(buffer));
+            printf("size %d \n",GST_BUFFER_SIZE(buffer));
             unsigned char *pData=(unsigned char*)GST_BUFFER_DATA(buffer);
             if (m_RGB==NULL) m_RGB = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3);
             if (buf_tmp ==NULL) buf_tmp=new unsigned char[width*height*3];
-//          memcpy((void*)buf_tmp,(void*)pData,width*height*1.5);
-//          convert(buf_tmp, m_RGB->imageData, height * width);
-//	    cv::Mat mat_img(m_RGB);
+            memcpy((void*)buf_tmp,(void*)pData,width*height*1.5);
+//            convert(buf_tmp, m_RGB->imageData, height * width);
+// 	    cv::Mat mat_img(m_RGB);
 //          cv::imwrite("my_bitmap.bmp", mat_img);
 //          mat_img.release();
 //          cvReleaseImage(&m_RGB);
@@ -310,19 +310,11 @@ int main(int argc, char *argv[]) {
     GstPad *tee_q1_pad, *tee_q2_pad;
     GstPad *q1_pad, *q2_pad;
 
-
-    if (!(tee_src_pad_template = gst_element_class_get_pad_template(GST_ELEMENT_GET_CLASS(videotee), "src_%u"))) {
-        gst_object_unref(pipeline_v1);
-        //gst_object_unref (pipeline_v2);
-        g_critical("Unable to get pad template from tee");
-        return 0;
-    }
-
-    tee_q1_pad = gst_element_request_pad(videotee, tee_src_pad_template, NULL, NULL);
+    tee_q1_pad = gst_element_get_request_pad(videotee, "src%d");
     g_print("Obtained request pad %s for q1 branch.\n", gst_pad_get_name(tee_q1_pad));
     q1_pad = gst_element_get_static_pad(queue1, "sink");
 
-    tee_q2_pad = gst_element_request_pad(videotee, tee_src_pad_template, NULL, NULL);
+    tee_q2_pad = gst_element_get_request_pad(videotee, "src%d");
     g_print("Obtained request pad %s for q2 branch.\n", gst_pad_get_name(tee_q2_pad));
     q2_pad = gst_element_get_static_pad(queue2, "sink");
 
