@@ -1,12 +1,18 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <iostream>
+#include <fstream>
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
 //#include <gst/app/gstappsrc.h>
 //#include <gst/app/gstappbuffer.h>
 #include <gst/app/gstappsink.h>  
 #include <opencv2/opencv.hpp>
+#include "Counter.h"
+#include "opencv2/video/background_segm.hpp"
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 
 GMainLoop *loop;
 typedef struct _CustomData {
@@ -29,7 +35,6 @@ static void convert(unsigned char *src, char *dst, int size) {
         dst[i + 5] = src[j + 1];
     }
 };
-
 
 static GstFlowReturn new_buffer_list (GstAppSink *sink, gpointer user_data)
 { 
@@ -63,6 +68,36 @@ IplImage *frame = NULL;
 IplImage *m_RGB = NULL;
 unsigned char *buf_tmp = NULL;
 GMutex mutex;
+Counter *cnter;
+
+void init_counting(std::string& pathToConfig){
+	cv::Size frameSize(640,480);	
+	std::ifstream confZone(pathToConfig.c_str());
+
+	cv::Mat detectionZone(4, 1, CV_32FC2);
+	int x, y;
+	confZone >> x;
+	confZone >> y;
+	cv::Point2f pt1(x, y);
+	detectionZone.at<cv::Point2f>(0) = pt1;
+	confZone >> x;
+	confZone >> y;
+	cv::Point2f pt2(x, y);
+	detectionZone.at<cv::Point2f>(1) = pt2;
+	confZone >> x;
+	confZone >> y;
+	cv::Point2f pt3(x, y);
+	detectionZone.at<cv::Point2f>(2) = pt3;
+	confZone >> x;
+	confZone >> y;
+	cv::Point2f pt4(x, y);
+	detectionZone.at<cv::Point2f>(3) = pt4;
+
+	int stripeNum = 3;
+	double stripeThr = 0.1;
+
+	cnter=new Counter(detectionZone, frameSize, stripeNum, stripeThr,0);
+}
 
 static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
     int height =480; //480;//1944;
@@ -75,12 +110,14 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
     g_mutex_lock(&mutex);
     buffer =  gst_app_sink_pull_buffer (sink);
     if (buffer) {
-            printf("size %d \n",GST_BUFFER_SIZE(buffer));
+//            printf("size %d \n",GST_BUFFER_SIZE(buffer));
             unsigned char *pData=(unsigned char*)GST_BUFFER_DATA(buffer);
             if (m_RGB==NULL) m_RGB = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3);
             if (buf_tmp ==NULL) buf_tmp=new unsigned char[width*height*3];
             memcpy((void*)buf_tmp,(void*)pData,width*height*1.5);
-//            convert(buf_tmp, m_RGB->imageData, height * width);
+            convert(buf_tmp, m_RGB->imageData, height * width);
+	    cv::Mat frame=cv::Mat(480,640,CV_8UC3,m_RGB->imageData);
+    	    int currentCount = cnter->processFrame(frame);
 // 	    cv::Mat mat_img(m_RGB);
 //          cv::imwrite("my_bitmap.bmp", mat_img);
 //          mat_img.release();
@@ -209,16 +246,18 @@ int main(int argc, char *argv[]) {
     GstElement *source, *sink_app, *sink_file, *csp, *enc, *videotee, *parser;
     GstElement *queue1, *queue2;
     GstElement *rtp, *udpsink, *fakesink;
+
     /* Initialize GStreamer */
-  signal(SIGABRT, almost_c99_signal_handler);
-  signal(SIGFPE,  almost_c99_signal_handler);
-  signal(SIGILL,  almost_c99_signal_handler);
-  signal(SIGINT,  almost_c99_signal_handler);
-  signal(SIGSEGV, almost_c99_signal_handler);
-  signal(SIGTERM, almost_c99_signal_handler);
+    signal(SIGABRT, almost_c99_signal_handler);
+    signal(SIGFPE,  almost_c99_signal_handler);
+    signal(SIGILL,  almost_c99_signal_handler);
+    signal(SIGINT,  almost_c99_signal_handler);
+    signal(SIGSEGV, almost_c99_signal_handler);
+    signal(SIGTERM, almost_c99_signal_handler);
     
     gst_init(&argc, &argv);
-
+    std::string pathToConfig = "confZone1.txt";
+    init_counting(pathToConfig);
 
     source = gst_element_factory_make("imxv4l2src", "source");
     
