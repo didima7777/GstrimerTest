@@ -312,12 +312,11 @@ int main(int argc, char *argv[]) {
         return -1;
     };
 
-    gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2, sink_app, enc, rtp, udpsink, parser, NULL); //,enc,rtp,udpsink
+    gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2, sink_app, enc, rtp, udpsink, parser, NULL);
 
 
     if (!gst_element_link_many(source, videotee, NULL)) {
-        gst_object_unref(pipeline_v1);
-        //gst_object_unref (pipeline_v2);
+        gst_object_unref(pipeline_v1);        
         g_critical("Unable to link src to csp ");
         exit(1);
     }
@@ -333,7 +332,6 @@ int main(int argc, char *argv[]) {
     }
 
 
-    GstPadTemplate *tee_src_pad_template;
     GstPad *tee_q1_pad, *tee_q2_pad;
     GstPad *q1_pad, *q2_pad;
 
