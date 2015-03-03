@@ -5,8 +5,8 @@
 #include <fstream>
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
-//#include <gst/app/gstappsrc.h>
-//#include <gst/app/gstappbuffer.h>
+#include <gst/app/gstappsrc.h>
+#include <gst/app/gstappbuffer.h>
 #include <gst/app/gstappsink.h>  
 #include <opencv2/opencv.hpp>
 #include "Counter.h"
@@ -26,7 +26,6 @@ void print_buffer (GstBuffer *buffer, const char *title);
 static void convert(unsigned char *src, char *dst, int size) {
     for (int i = 0, j = 0; i < size * 3; i += 6, j += 2) //+2
     {
-
         dst[i] = src[j + 0];
         dst[i + 1] = src[j + 0];
         dst[i + 2] = src[j + 0];
@@ -38,7 +37,6 @@ static void convert(unsigned char *src, char *dst, int size) {
 
 static GstFlowReturn new_buffer_list (GstAppSink *sink, gpointer user_data)
 { 
-   // GstBufferList *list = gst_app_sink_pull_buffer_list (sink);
     GstBufferList *list = gst_app_sink_pull_buffer_list (sink);
     GstBufferListIterator *it = gst_buffer_list_iterate (list);
     GstBuffer *buffer;
@@ -262,11 +260,9 @@ int main(int argc, char *argv[]) {
     source = gst_element_factory_make("imxv4l2src", "source");
     
     queue1 = gst_element_factory_make("queue", "queue1");
-//  g_object_set( G_OBJECT(queue1), "max-size-buffers", 10, NULL);
-    
     queue2 = gst_element_factory_make("queue", "queue2");
-    
-    //enc = gst_element_factory_make("imxvpuenc_h264", "imxvpu");
+//  g_object_set( G_OBJECT(queue1), "max-size-buffers", 10, NULL);
+        
      enc = gst_element_factory_make("vpuenc", "imxvpu");
      g_object_set(G_OBJECT(enc), "codec", 6, NULL);
 
@@ -293,7 +289,7 @@ int main(int argc, char *argv[]) {
     g_object_set(G_OBJECT(source), "device", "/dev/video0", NULL);
     //  g_object_set( G_OBJECT(source), "num-buffers", "-1", NULL);
     //  g_object_set( G_OBJECT(source), "capture-mode", 0, NULL); 
-    //  g_object_set( G_OBJECT(source), "fps-n", "30", NULL); 
+      g_object_set( G_OBJECT(source), "fps-n", "30", NULL); 
 
 
 
@@ -314,17 +310,7 @@ int main(int argc, char *argv[]) {
         return -1;
     };
 
-    //gst_bin_add_many (GST_BIN (pipeline_v1), source,queue1,parser,enc,rtp,udpsink,NULL); //,enc,rtp,udpsink
     gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2, sink_app, enc, rtp, udpsink, parser, NULL); //,enc,rtp,udpsink
-
-//        if(!gst_element_link_many(source, queue1,enc,parser,rtp,udpsink, NULL))
-//        {
-//          gst_object_unref (pipeline_v1);
-//          //gst_object_unref (pipeline_v2);
-//          g_critical ("Unable to link src to csp ");
-//         exit (1);
-//        }
-
 
 
     if (!gst_element_link_many(source, videotee, NULL)) {
@@ -391,15 +377,10 @@ int main(int argc, char *argv[]) {
 
     
     gst_app_sink_set_callbacks(GST_APP_SINK(sink_app), &callbacks, NULL, NULL);
-    //g_object_set (sink_app, "emit-signals", TRUE, NULL);
-    //g_signal_connect (sink_app, "new-sample", G_CALLBACK (new_buffer), NULL);
     g_signal_connect (udpsink, "client-added", G_CALLBACK (&add_cliden), NULL);
     
     guint bus_watch_id = gst_bus_add_watch(bus, bus_call, NULL);  
-    
-    //gst_bus_add_signal_watch (bus);
-    //g_signal_connect (bus, "message", G_CALLBACK (bus_call), &data);
-    
+        
     ret = gst_element_set_state(pipeline_v1, GST_STATE_PLAYING);
 
 
@@ -410,9 +391,8 @@ int main(int argc, char *argv[]) {
     gst_object_unref(q2_pad);
     gst_object_unref(bus);
     gst_element_set_state(pipeline_v1, GST_STATE_NULL);
-    //  gst_element_set_state (pipeline_v2, GST_STATE_NULL);
     gst_object_unref(pipeline_v1);
-    //gst_object_unref (pipeline_v2);
+
 
     return 0;
 }
