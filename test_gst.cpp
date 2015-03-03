@@ -15,8 +15,7 @@ typedef struct _CustomData {
     GMainLoop *loop;
 } CustomData;
 
-void print_buffer(GstAppSink *sink, const char *title);
-
+void print_buffer (GstBuffer *buffer, const char *title);
 
 static void convert(unsigned char *src, char *dst, int size) {
     for (int i = 0, j = 0; i < size * 3; i += 6, j += 2) //+2
@@ -31,21 +30,33 @@ static void convert(unsigned char *src, char *dst, int size) {
     }
 };
 
+
+static GstFlowReturn new_buffer_list (GstAppSink *sink, gpointer user_data)
+{ 
+   // GstBufferList *list = gst_app_sink_pull_buffer_list (sink);
+    GstBufferList *list = gst_app_sink_pull_buffer_list (sink);
+    GstBufferListIterator *it = gst_buffer_list_iterate (list);
+    GstBuffer *buffer;
+    while (gst_buffer_list_iterator_next_group (it))
+        while ((buffer = gst_buffer_list_iterator_next (it)) != NULL)
+            print_buffer(buffer, "new_buffer_list");
+    gst_buffer_list_iterator_free (it);
+ 
+    return GST_FLOW_OK;
+}
+
 static void new_oes(GstAppSink *sink, gpointer user_data) {
     printf("###### eos #######\n");
 }
 
 static GstFlowReturn new_preroll(GstAppSink *sink, gpointer user_data) {
     printf("#####  new_preroll #######!!!\n");
-    GstSample *sample = gst_app_sink_pull_preroll(sink);
-    if (sample) {
-        printf("##### #######\n");
-        GstBuffer* buffer = gst_sample_get_buffer(sample);
-        print_buffer(sink, "preroll");
-        gst_buffer_unref(buffer);
-        gst_sample_unref(sample);
-    }
-    return GST_FLOW_OK;
+    GstBuffer *buffer =  gst_app_sink_pull_preroll (sink);
+    if (buffer) {
+        print_buffer(buffer, "preroll");
+	gst_buffer_unref(buffer);
+   }
+   return GST_FLOW_OK;
 }
 
 IplImage *frame = NULL;
@@ -58,32 +69,23 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
     int width = 640;//640;//2592;
     static int  cnt=0;
 
-    GstMapInfo map;
-
-    GstSample* sample;
     GstBuffer* buffer;
-    GstCaps* caps;
-//    printf("# %d #\n",cnt++);
-    
-    g_mutex_lock(&mutex);
-    sample = gst_app_sink_pull_sample(sink);
-    if (sample) {
 
-            buffer = gst_sample_get_buffer(sample);
-            caps = gst_sample_get_caps(sample);
-            gst_buffer_map(buffer, &map, GST_MAP_READ);
-//            printf("size = %d  ", map.size);
-            unsigned char *pData = (unsigned char*) map.data;
+//    printf("# %d #\n",cnt++);    
+    g_mutex_lock(&mutex);
+    buffer =  gst_app_sink_pull_buffer (sink);
+    if (buffer) {
+//          printf("size %d \n",GST_BUFFER_SIZE(buffer));
+            unsigned char *pData=(unsigned char*)GST_BUFFER_DATA(buffer);
             if (m_RGB==NULL) m_RGB = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3);
             if (buf_tmp ==NULL) buf_tmp=new unsigned char[width*height*3];
-//            memcpy((void*)buf_tmp,(void*)pData,width*height*1.5);
-//            convert(buf_tmp, m_RGB->imageData, height * width);
+//          memcpy((void*)buf_tmp,(void*)pData,width*height*1.5);
+//          convert(buf_tmp, m_RGB->imageData, height * width);
 //	    cv::Mat mat_img(m_RGB);
-//            cv::imwrite("my_bitmap.bmp", mat_img);
-//            mat_img.release();
+//          cv::imwrite("my_bitmap.bmp", mat_img);
+//          mat_img.release();
 //          cvReleaseImage(&m_RGB);
 
-        gst_buffer_unmap(buffer, &map);
         gst_buffer_unref(buffer);
 //        printf("\n");
     }
@@ -91,9 +93,9 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
     return GST_FLOW_OK;
 }
 
-void print_buffer(GstAppSink *sink, const char *title) {
+void print_buffer (GstBuffer *buffer, const char *title) {
     g_mutex_lock(&mutex);
-    GstCaps *caps = gst_app_sink_get_caps(sink);    
+    GstCaps *caps = gst_buffer_get_caps(buffer);
     for (uint j = 0; j < gst_caps_get_size(caps); ++j) {
         GstStructure *structure = gst_caps_get_structure(caps, j);
         printf("%s{%ss}: ", (title), (gst_structure_get_name(structure)));
@@ -348,10 +350,9 @@ int main(int argc, char *argv[]) {
     
     loop = g_main_loop_new(NULL, FALSE);
         
-    GstAppSinkCallbacks callbacks;
-    callbacks.eos = &new_oes;
-    callbacks.new_preroll = &new_preroll;   
-    callbacks.new_sample = &new_buffer;
+    GstAppSinkCallbacks callbacks = { NULL, new_preroll, new_buffer,
+                                      new_buffer_list, { NULL } };
+    gst_app_sink_set_callbacks (GST_APP_SINK(sink_app), &callbacks, NULL, NULL);
     
     CustomData data;
     data.loop = loop;
