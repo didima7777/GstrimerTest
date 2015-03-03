@@ -54,8 +54,8 @@ unsigned char *buf_tmp = NULL;
 GMutex mutex;
 
 static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
-    int height =1944; //480;//1944;
-    int width = 2592;//640;//2592;
+    int height =480; //480;//1944;
+    int width = 640;//640;//2592;
     static int  cnt=0;
 
     GstMapInfo map;
@@ -217,14 +217,14 @@ int main(int argc, char *argv[]) {
     gst_init(&argc, &argv);
 
 
-    source = gst_element_factory_make("v4l2src", "source");
+    source = gst_element_factory_make("imxv4l2src", "source");
     
     queue1 = gst_element_factory_make("queue", "queue1");
 //  g_object_set( G_OBJECT(queue1), "max-size-buffers", 10, NULL);
     
     queue2 = gst_element_factory_make("queue", "queue2");
     
-    enc = gst_element_factory_make("x264enc", "x264enc");
+    enc = gst_element_factory_make("imxvpuenc_h264", "imxvpu");
     
     parser = gst_element_factory_make("h264parse", "h264parse");
     
@@ -234,7 +234,7 @@ int main(int argc, char *argv[]) {
     
     udpsink = gst_element_factory_make("udpsink", "updsink");
     
-    g_object_set(G_OBJECT(udpsink), "host", "127.0.0.1", NULL);
+    g_object_set(G_OBJECT(udpsink), "host", "10.0.0.2", NULL);
     g_object_set(G_OBJECT(udpsink), "port", 5000, NULL);
     g_object_set(G_OBJECT(udpsink), "sync", FALSE, NULL);
     g_object_set(G_OBJECT(udpsink), "async", FALSE, NULL);
