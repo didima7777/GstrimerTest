@@ -314,7 +314,7 @@ int main(int argc, char *argv[]) {
     if (!(tee_src_pad_template = gst_element_class_get_pad_template(GST_ELEMENT_GET_CLASS(videotee), "src_%u"))) {
         gst_object_unref(pipeline_v1);
         //gst_object_unref (pipeline_v2);
-        g_critical("Unable to get pad template");
+        g_critical("Unable to get pad template from tee");
         return 0;
     }
 
