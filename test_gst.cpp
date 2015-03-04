@@ -97,6 +97,8 @@ void init_counting(std::string& pathToConfig){
 	cnter=new Counter(detectionZone, frameSize, stripeNum, stripeThr,0);
 }
 
+char name_file[30];
+
 static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
     int height =480; //480;//1944;
     int width = 640;//640;//2592;
@@ -115,9 +117,10 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
             memcpy((void*)buf_tmp,(void*)pData,width*height*1.5);
             convert(buf_tmp, m_RGB->imageData, height * width);
 	    cv::Mat frame=cv::Mat(480,640,CV_8UC3,m_RGB->imageData);
-    	    int currentCount = cnter->processFrame(frame);
-// 	    cv::Mat mat_img(m_RGB);
-//          cv::imwrite("my_bitmap.bmp", mat_img);
+//    	    int currentCount = cnter->processFrame(frame);
+	    sprintf(name_file,"cap%d.bmp",cnt++);
+ 	    cv::Mat mat_img(m_RGB);
+//          cv::imwrite(name_file, mat_img);
 //          mat_img.release();
 //          cvReleaseImage(&m_RGB);
 
