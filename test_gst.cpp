@@ -163,7 +163,7 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
 //    	    int currentCount = cnter->processFrame(frame);
 	    sprintf(name_file,"cap%d.bmp",cnt++);
  	    cv::Mat mat_img(m_RGB);
-//          cv::imwrite(name_file, mat_img);
+//           cv::imwrite(name_file, mat_img);
 //          mat_img.release();
 //          cvReleaseImage(&m_RGB);
 
