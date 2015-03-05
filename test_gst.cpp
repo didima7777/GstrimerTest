@@ -9,17 +9,34 @@
 #include <gst/app/gstappbuffer.h>
 #include <gst/app/gstappsink.h>  
 #include <opencv2/opencv.hpp>
+#include <linux/videodev2.h>
+#include <linux/mxc_v4l2.h>
+#include <errno.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+
 #include "Counter.h"
 #include "opencv2/video/background_segm.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 
+int fd_video;
 GMainLoop *loop;
 typedef struct _CustomData {
     gboolean is_live;
     GstElement *pipeline;
     GMainLoop *loop;
 } CustomData;
+
+
+    GstBus *bus;
+    GstMessage *msg;
+    GstStateChangeReturn ret;
+    GstElement *pipeline_v1, *pipeline_v2;
+    GstElement *source, *sink_app, *sink_file, *csp, *enc, *videotee, *parser;
+    GstElement *queue1, *queue2;
+    GstElement *rtp, *udpsink, *fakesink;
+
 
 void print_buffer (GstBuffer *buffer, const char *title);
 
@@ -52,8 +69,34 @@ static void new_oes(GstAppSink *sink, gpointer user_data) {
     printf("###### eos #######\n");
 }
 
+
+void set_exposure(int exp) {
+	v4l2_control par_exp;
+	par_exp.id=V4L2_CID_EXPOSURE;
+	par_exp.value=exp;
+	if (ioctl(fd_video, VIDIOC_S_CTRL, &par_exp) < 0)
+	{
+		printf("\nVIDIOC_S_CTRL failed\n");
+	} else {
+	 printf("shutter %d \n",par_exp.value);
+	}
+}
+
 static GstFlowReturn new_preroll(GstAppSink *sink, gpointer user_data) {
     printf("#####  new_preroll #######!!!\n");
+
+	fd_video=0;
+        g_object_get (G_OBJECT (source), "file-id", &fd_video, NULL);
+	printf("fd=%d!!!!\n",fd_video);
+	struct v4l2_dbg_chip_ident chip;			    
+	if (ioctl(fd_video, VIDIOC_DBG_G_CHIP_IDENT, &chip))
+	{
+		printf("\nVIDIOC_DBG_G_CHIP_IDENT failed.\n");
+	} else {
+	printf("\nTV decoder chip is %s !!!!\n", chip.match.name);
+	}
+	set_exposure(100);
+
     GstBuffer *buffer =  gst_app_sink_pull_preroll (sink);
     if (buffer) {
         print_buffer(buffer, "preroll");
@@ -242,13 +285,6 @@ void almost_c99_signal_handler(int signum)
 
 int main(int argc, char *argv[]) {
 
-    GstBus *bus;
-    GstMessage *msg;
-    GstStateChangeReturn ret;
-    GstElement *pipeline_v1, *pipeline_v2;
-    GstElement *source, *sink_app, *sink_file, *csp, *enc, *videotee, *parser;
-    GstElement *queue1, *queue2;
-    GstElement *rtp, *udpsink, *fakesink;
 
     /* Initialize GStreamer */
     signal(SIGABRT, almost_c99_signal_handler);
@@ -263,9 +299,7 @@ int main(int argc, char *argv[]) {
     init_counting(pathToConfig);
 
     printf("Start gstreamer 0.1 and Counting\n");	
-
     source = gst_element_factory_make("imxv4l2src", "source");
-    
     queue1 = gst_element_factory_make("queue", "queue1");
     queue2 = gst_element_factory_make("queue", "queue2");
 //  g_object_set( G_OBJECT(queue1), "max-size-buffers", 10, NULL);
@@ -387,8 +421,6 @@ int main(int argc, char *argv[]) {
     guint bus_watch_id = gst_bus_add_watch(bus, bus_call, NULL);  
         
     ret = gst_element_set_state(pipeline_v1, GST_STATE_PLAYING);
-
-
 
     g_main_loop_run(loop);
 
