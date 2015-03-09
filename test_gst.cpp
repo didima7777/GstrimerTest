@@ -82,9 +82,20 @@ void set_exposure(int exp) {
 	}
 }
 
-static GstFlowReturn new_preroll(GstAppSink *sink, gpointer user_data) {
-    printf("#####  new_preroll #######!!!\n");
+void set_gain(int gain) {
+	v4l2_control par_exp;
+	par_exp.id=V4L2_CID_GAIN;
+	par_exp.value=gain;
+	if (ioctl(fd_video, VIDIOC_S_CTRL, &par_exp) < 0)
+	{
+		printf("\nVIDIOC_S_CTRL failed\n");
+	} else {
+	 printf("shutter %d \n",par_exp.value);
+	}
+}
 
+static GstFlowReturn new_preroll(GstAppSink *sink, gpointer user_data) {
+/*
 	fd_video=0;
         g_object_get (G_OBJECT (source), "file-id", &fd_video, NULL);
 	printf("fd=%d!!!!\n",fd_video);
@@ -96,10 +107,10 @@ static GstFlowReturn new_preroll(GstAppSink *sink, gpointer user_data) {
 	printf("\nTV decoder chip is %s !!!!\n", chip.match.name);
 	}
 	set_exposure(100);
-
+*/
     GstBuffer *buffer =  gst_app_sink_pull_preroll (sink);
     if (buffer) {
-        print_buffer(buffer, "preroll");
+//        print_buffer(buffer, "preroll");
 	gst_buffer_unref(buffer);
    }
    return GST_FLOW_OK;
@@ -199,16 +210,27 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer user_data) {
         case GST_MESSAGE_STATE_CHANGED:
         {
             GstState old_state, new_state;
-
             gst_message_parse_state_changed(msg, &old_state, &new_state, NULL);
             printf("[%s]: %s -> %s\n", GST_OBJECT_NAME(msg->src), gst_element_state_get_name(old_state), gst_element_state_get_name(new_state));
+            if (strcmp(msg->src->name,"source")==0) {
+                if (strcmp(gst_element_state_get_name(new_state),"READY")==0) {
+                    g_object_get (G_OBJECT (source), "file-id", &fd_video, NULL);
+		    //printf("video file %d \n",fd_video);
+		    struct v4l2_dbg_chip_ident chip;
+	   	    if (ioctl(fd_video, VIDIOC_DBG_G_CHIP_IDENT, &chip))
+  			printf("\nVIDIOC_DBG_G_CHIP_IDENT failed.\n");
+		   else 
+ 		    printf("\nTV decoder chip is %s !!!!\n", chip.match.name);		
+		    //set_exposure(shutter);
+ 		    //set_gain(gain);                    
+                }
+            }
             break;
         }
         case GST_MESSAGE_ERROR:
         {
             gchar *debug;
             GError *err;
-
             gst_message_parse_error(msg, &err, &debug);
             printf("[%s]: %s %s\n", GST_OBJECT_NAME(msg->src), err->message, debug);
             g_free(debug);
