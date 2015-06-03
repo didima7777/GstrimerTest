@@ -585,22 +585,17 @@ int main(int argc, char *argv[]) {
         printf("Cannot link gstreamer elements 1\n");
         exit(1);
     }
-*/
-
 
 //    if (!gst_element_link_many(queue2, enc, parser, rtp, tcpserver, NULL)) { //enc,rtp, udpsink
 //    if (!gst_element_link_many(queue2, enc, parser, rtp, udpsink, NULL)) { //enc,rtp, udpsink
-/*
+
     if (!gst_element_link_many(queue2, fakesink, NULL)) { //enc,rtp, udpsink
         printf("Cannot link gstreamer elements 2\n");
         exit(1);
     }
 
-
-
     GstPad *tee_q1_pad, *tee_q2_pad;
     GstPad *q1_pad, *q2_pad;
-
 
     tee_q1_pad = gst_element_get_request_pad(videotee, "src%d");
     g_print("Obtained request pad %s for q1 branch.\n", gst_pad_get_name(tee_q1_pad));
