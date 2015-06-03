@@ -15,10 +15,17 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
+#include <unistd.h>
+#include <sys/types.h> 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <pthread.h>
+
 #include "Counter.h"
 #include "opencv2/video/background_segm.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include "gst-server-lib/rtsp-server.h"
 
 int fd_video;
 GMainLoop *loop;
@@ -33,9 +40,9 @@ typedef struct _CustomData {
     GstMessage *msg;
     GstStateChangeReturn ret;
     GstElement *pipeline_v1, *pipeline_v2;
-    GstElement *source, *sink_app, *sink_file, *csp, *enc, *videotee, *parser;
+    GstElement *source, *sink_app_1,*sink_app_2, *sink_file, *csp, *enc, *videotee, *parser,*gdppay;
     GstElement *queue1, *queue2;
-    GstElement *rtp, *udpsink, *fakesink;
+    GstElement *rtp, *udpsink, *fakesink,*tcpserver;
 
 
 void print_buffer (GstBuffer *buffer, const char *title);
@@ -82,11 +89,24 @@ void set_exposure(int exp) {
 	}
 }
 
-static GstFlowReturn new_preroll(GstAppSink *sink, gpointer user_data) {
-    printf("#####  new_preroll #######!!!\n");
 
+void set_gain(int gain) {
+	v4l2_control par_exp;
+	par_exp.id=V4L2_CID_GAIN;
+	par_exp.value=gain;
+	if (ioctl(fd_video, VIDIOC_S_CTRL, &par_exp) < 0)
+	{
+		printf("\nVIDIOC_S_CTRL failed\n");
+	} else {
+	 printf("shutter %d \n",par_exp.value);
+	}
+}
+
+static GstFlowReturn new_preroll(GstAppSink *sink, gpointer user_data) {
+	printf("#####  new_preroll #######!!!\n");
 	fd_video=0;
         g_object_get (G_OBJECT (source), "file-id", &fd_video, NULL);
+/*
 	printf("fd=%d!!!!\n",fd_video);
 	struct v4l2_dbg_chip_ident chip;			    
 	if (ioctl(fd_video, VIDIOC_DBG_G_CHIP_IDENT, &chip))
@@ -95,13 +115,14 @@ static GstFlowReturn new_preroll(GstAppSink *sink, gpointer user_data) {
 	} else {
 	printf("\nTV decoder chip is %s !!!!\n", chip.match.name);
 	}
-	set_exposure(100);
+*/
+	set_exposure(500);//100
 
-    GstBuffer *buffer =  gst_app_sink_pull_preroll (sink);
-    if (buffer) {
-        print_buffer(buffer, "preroll");
-	gst_buffer_unref(buffer);
-   }
+        GstBuffer *buffer =  gst_app_sink_pull_preroll (sink);
+        if (buffer) {
+          print_buffer(buffer, "preroll");
+   	  gst_buffer_unref(buffer);
+        }
    return GST_FLOW_OK;
 }
 
@@ -141,34 +162,49 @@ void init_counting(std::string& pathToConfig){
 }
 
 char name_file[30];
+int currentCount;
+GstBuffer* buffer;
+GstBuffer* buffer_rtp;
+unsigned char flag_rtp=0;
 
 static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
     int height =480; //480;//1944;
     int width = 640;//640;//2592;
     static int  cnt=0;
+    static int expo=1;
+	
 
-    GstBuffer* buffer;
 
-//    printf("# %d #\n",cnt++);    
     g_mutex_lock(&mutex);
     buffer =  gst_app_sink_pull_buffer (sink);
+    if (flag_rtp==1) buffer_rtp = buffer;//gst_buffer_copy (buffer);
+
     if (buffer) {
-//            printf("size %d \n",GST_BUFFER_SIZE(buffer));
             unsigned char *pData=(unsigned char*)GST_BUFFER_DATA(buffer);
             if (m_RGB==NULL) m_RGB = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3);
             if (buf_tmp ==NULL) buf_tmp=new unsigned char[width*height*3];
             memcpy((void*)buf_tmp,(void*)pData,width*height*1.5);
             convert(buf_tmp, m_RGB->imageData, height * width);
 	    cv::Mat frame=cv::Mat(480,640,CV_8UC3,m_RGB->imageData);
-//    	    int currentCount = cnter->processFrame(frame);
-	    sprintf(name_file,"cap%d.bmp",cnt++);
- 	    cv::Mat mat_img(m_RGB);
+
+     	    if (cnt++>100) {
+		//printf("inc expo %d\n",expo);
+		//set_gain(expo);
+	    	//set_exposure(expo);
+		expo+=2;
+		printf("!!!\n");
+   	 	cnt=0;
+	    }
+
+    	    currentCount = cnter->processFrame(frame);
+//	    sprintf(name_file,"cap%d.bmp",cnt++);
+// 	    cv::Mat mat_img(m_RGB);
 //           cv::imwrite(name_file, mat_img);
 //          mat_img.release();
 //          cvReleaseImage(&m_RGB);
 
         gst_buffer_unref(buffer);
-//        printf("\n");
+//        printf("!!!\n");
     }
     g_mutex_unlock(&mutex);
     return GST_FLOW_OK;
@@ -213,7 +249,6 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer user_data) {
             printf("[%s]: %s %s\n", GST_OBJECT_NAME(msg->src), err->message, debug);
             g_free(debug);
             g_error_free(err);
-            // 	exit(1);
             break;
         }
         case GST_MESSAGE_EOS:
@@ -250,6 +285,68 @@ void add_cliden (GstElement* object, gchararray arg0, gint arg1, gpointer user_d
     printf("add clien \n");
 }
 
+
+typedef struct _App App;
+struct _App
+{
+    GstElement *videosink;
+};
+App s_app;
+
+typedef struct {
+    App *glblapp;
+    GstClockTime timestamp;
+} Context;
+
+static void
+need_data (GstElement *appsrc, guint unused, Context *ctx)
+{
+    GstFlowReturn ret;
+//    GstBuffer* buffer;
+//     buffer =  gst_app_sink_pull_buffer (GST_APP_SINK(ctx->glblapp->videosink));
+
+//     printf("need\n");
+
+    if (buffer_rtp) {
+//        printf("need data OK\n");
+        GST_BUFFER_TIMESTAMP(buffer_rtp) = ctx->timestamp;
+        GST_BUFFER_DURATION (buffer_rtp) = gst_util_uint64_scale_int (1,GST_SECOND, 30);
+        ctx->timestamp += GST_BUFFER_DURATION (buffer_rtp);
+        g_signal_emit_by_name(appsrc, "push-buffer", buffer_rtp, &ret);
+        //gst_object_unref (buffer_rtp);
+    }
+
+}
+
+static void media_configure (GstRTSPMediaFactory *factory, GstRTSPMedia *media, App *app)
+{    
+    Context *ctx;
+    GstElement *pipeline;
+    GstElement *appsrc;
+    pipeline = gst_rtsp_media_get_element(media);
+    appsrc = gst_bin_get_by_name_recurse_up (GST_BIN (pipeline), "mysrc");
+    gst_rtsp_media_set_reusable(media, TRUE);
+    gst_util_set_object_arg (G_OBJECT (appsrc), "format", "time");
+//  g_object_set (G_OBJECT (appsrc), "caps",gst_caps_from_string(videocaps), NULL);
+/*
+    g_object_set (G_OBJECT (appsrc), "caps",
+    gst_caps_new_simple ("video/x-raw-yuvs",
+     "format", G_TYPE_STRING, "RGB16",
+     "width", G_TYPE_INT, 640,
+     "height", G_TYPE_INT, 480,
+     "framerate", GST_TYPE_FRACTION, 500, 167, NULL), NULL);
+*/
+    g_object_set(G_OBJECT(appsrc), "max-bytes", gst_app_src_get_max_bytes(GST_APP_SRC(appsrc)), NULL);
+    ctx = g_new0 (Context, 1);
+    ctx->glblapp = app;
+    ctx->timestamp = 0;
+    g_signal_connect (appsrc, "need-data", (GCallback) need_data, ctx);
+    printf("\nmedia_configure OK\n");
+    flag_rtp=1;
+    gst_object_unref (appsrc);
+    gst_object_unref (pipeline);
+}
+
 void almost_c99_signal_handler(int signum)
 {
  switch(signum)
@@ -283,6 +380,77 @@ void almost_c99_signal_handler(int signum)
 }
 
 
+
+
+void process_command(int); /* function prototype */
+
+void error(const char *msg)
+{
+    perror(msg);
+    exit(1);
+}
+
+int sockfd, newsockfd, portno, pid;
+socklen_t clilen;
+struct sockaddr_in serv_addr, cli_addr;
+
+void* server(void *t)
+{
+     sockfd = socket(AF_INET, SOCK_STREAM, 0);
+     if (sockfd < 0) 
+        error("ERROR opening socket");
+     bzero((char *) &serv_addr, sizeof(serv_addr));
+     portno = 23589;//atoi(argv[1]);
+     serv_addr.sin_family = AF_INET;
+     serv_addr.sin_addr.s_addr = INADDR_ANY;
+     serv_addr.sin_port = htons(portno);
+     if (bind(sockfd, (struct sockaddr *) &serv_addr,
+              sizeof(serv_addr)) < 0) 
+              error("ERROR on binding");
+     listen(sockfd,5);
+     clilen = sizeof(cli_addr);
+     while (1) {
+         newsockfd = accept(sockfd, 
+               (struct sockaddr *) &cli_addr, &clilen);
+         if (newsockfd < 0) 
+             error("ERROR on accept");
+	 else {
+             process_command(newsockfd);
+	     close(newsockfd);
+	}
+     } /* end of while */
+     pthread_exit((void*) t);
+}
+
+void process_command(int sock)
+{
+   int n;
+   char buffer[256];
+   int value;
+   char cmd;
+	   
+   bzero(buffer,256);
+   n = read(sock,buffer,255);
+   if (n < 0) error("ERROR reading from socket");
+   printf("Here is the message: %s\n",buffer);
+   sscanf(buffer,"%c %d",&cmd,&value);
+   switch(cmd){
+   case 's':
+	set_exposure(value);
+    break;	
+   case 'g': 
+	set_gain(value);
+    break;	
+   }
+   //currentCount
+   bzero(buffer,256);
+   sprintf(buffer,"I got your message %d \n",currentCount);
+   n = write(sock,buffer,strlen(buffer));
+   if (n < 0) error("ERROR writing to socket");
+}
+
+
+
 int main(int argc, char *argv[]) {
 
 
@@ -294,12 +462,27 @@ int main(int argc, char *argv[]) {
     signal(SIGSEGV, almost_c99_signal_handler);
     signal(SIGTERM, almost_c99_signal_handler);
     
+
+   pthread_t thread;
+   pthread_attr_t attr;
+   int rc;
+   long t;
+   void *status;
+   App *app = &s_app;
+
+   /* Initialize and set thread detached attribute */
+
+   t=0;
+   pthread_attr_init(&attr);
+   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+   rc = pthread_create(&thread, &attr, server, (void *)t); 
+   
     gst_init(&argc, &argv);
     std::string pathToConfig = "confZone1.txt";
     init_counting(pathToConfig);
 
     printf("Start gstreamer 0.1 and Counting\n");	
-    source = gst_element_factory_make("imxv4l2src", "source");
+    source = gst_element_factory_make("imxv4l2src", "source cam");
     queue1 = gst_element_factory_make("queue", "queue1");
     queue2 = gst_element_factory_make("queue", "queue2");
 //  g_object_set( G_OBJECT(queue1), "max-size-buffers", 10, NULL);
@@ -308,20 +491,31 @@ int main(int argc, char *argv[]) {
      g_object_set(G_OBJECT(enc), "codec", 6, NULL);
 
     parser = gst_element_factory_make("h264parse", "h264parse");
-    
+   
     rtp = gst_element_factory_make("rtph264pay", "rtp");
+    g_object_set( G_OBJECT(rtp), "config-interval", 1, NULL);	
+    g_object_set( G_OBJECT(rtp), "pt", 96, NULL);
+   
 
     fakesink = gst_element_factory_make("fakesink", "fakesink");
-    
-    udpsink = gst_element_factory_make("udpsink", "updsink");
-    
+    udpsink = gst_element_factory_make("udpsink", "multiudpsink");
     g_object_set(G_OBJECT(udpsink), "host", "10.0.0.2", NULL);
     g_object_set(G_OBJECT(udpsink), "port", 5000, NULL);
     g_object_set(G_OBJECT(udpsink), "sync", FALSE, NULL);
     g_object_set(G_OBJECT(udpsink), "async", FALSE, NULL);
     
-    sink_app = gst_element_factory_make("appsink", "appsink");
-    
+    tcpserver = gst_element_factory_make("tcpserversink", "tcpserversink");
+    g_object_set(G_OBJECT(tcpserver), "host", "10.0.0.1", NULL);
+    g_object_set(G_OBJECT(tcpserver), "port", 8081, NULL);
+
+    sink_app_1 = gst_element_factory_make("appsink", "appsink 1");
+    sink_app_2 = gst_element_factory_make("appsink", "appsink 2");
+    app->videosink = sink_app_2;
+    gst_app_sink_set_drop(GST_APP_SINK (app->videosink), TRUE);
+    gst_app_sink_set_max_buffers(GST_APP_SINK (app->videosink), 1);
+
+
+
     sink_file = gst_element_factory_make("filesink", "filesink");
     g_object_set(G_OBJECT(sink_file), "location", "t1.jpeg", NULL);
     
@@ -338,7 +532,7 @@ int main(int argc, char *argv[]) {
     pipeline_v2 = gst_pipeline_new("cam-pipeline");
 
 
-    if (!pipeline_v1 || !pipeline_v2 || !source || !sink_app || !sink_file || !queue1 || !queue2 || !videotee || !enc || !parser) {
+    if (!pipeline_v1 || !pipeline_v2 || !source || !sink_app_1 || !sink_app_2 || !sink_file || !queue1 || !queue2 || !videotee || !enc || !parser || !tcpserver || !udpsink) {
         g_printerr("Not pipeline element could be created.\n");
         return -1;
     }
@@ -350,73 +544,114 @@ int main(int argc, char *argv[]) {
         g_printerr("Not pipeline element updsink could be created.\n");
         return -1;
     };
+    if (!tcpserver) {
+        g_printerr("Not pipeline element updsink could be created.\n");
+        return -1;
+    };
 
-    gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2, sink_app, enc, rtp, udpsink, parser, NULL);
 
+    //gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2, sink_app, enc, rtp,tcpserver, parser, NULL);
+    //gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2, sink_app, enc, rtp,udpsink, parser, NULL);
+    //gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2 , sink_app_1,fakesink,  NULL);
+    gst_bin_add_many(GST_BIN(pipeline_v1), source,  queue1, sink_app_1,  NULL);
 
+    if (!gst_element_link_many(source, queue1 , sink_app_1, NULL)) {
+        gst_object_unref(pipeline_v1);        
+        g_critical("Unable to link src to csp ");
+        exit(1);
+    }
+/*
     if (!gst_element_link_many(source, videotee, NULL)) {
         gst_object_unref(pipeline_v1);        
         g_critical("Unable to link src to csp ");
         exit(1);
     }
 
-    if (!gst_element_link_many(queue1, sink_app, NULL)) {
+    if (!gst_element_link_many(queue1, sink_app_1, NULL)) {
         printf("Cannot link gstreamer elements 1\n");
         exit(1);
     }
+*/
 
-    if (!gst_element_link_many(queue2, enc, parser, rtp, udpsink, NULL)) { //enc,rtp,
+
+//    if (!gst_element_link_many(queue2, enc, parser, rtp, tcpserver, NULL)) { //enc,rtp, udpsink
+//    if (!gst_element_link_many(queue2, enc, parser, rtp, udpsink, NULL)) { //enc,rtp, udpsink
+/*
+    if (!gst_element_link_many(queue2, fakesink, NULL)) { //enc,rtp, udpsink
         printf("Cannot link gstreamer elements 2\n");
         exit(1);
     }
 
 
+
     GstPad *tee_q1_pad, *tee_q2_pad;
     GstPad *q1_pad, *q2_pad;
+
 
     tee_q1_pad = gst_element_get_request_pad(videotee, "src%d");
     g_print("Obtained request pad %s for q1 branch.\n", gst_pad_get_name(tee_q1_pad));
     q1_pad = gst_element_get_static_pad(queue1, "sink");
 
+    if (gst_pad_link(tee_q1_pad, q1_pad) != GST_PAD_LINK_OK) {
+        g_critical("Tee for q1 could not be linked.\n");
+        gst_object_unref(pipeline_v1);        
+        return 0;
+
+    }
+
+
     tee_q2_pad = gst_element_get_request_pad(videotee, "src%d");
     g_print("Obtained request pad %s for q2 branch.\n", gst_pad_get_name(tee_q2_pad));
     q2_pad = gst_element_get_static_pad(queue2, "sink");
 
-    if (gst_pad_link(tee_q1_pad, q1_pad) != GST_PAD_LINK_OK) {
-
-        g_critical("Tee for q1 could not be linked.\n");
-        gst_object_unref(pipeline_v1);
-        //gst_object_unref (pipeline_v2);
-        return 0;
-
-    }
-
 
     if (gst_pad_link(tee_q2_pad, q2_pad) != GST_PAD_LINK_OK) {
-
         g_critical("Tee for q2 could not be linked.\n");
-        gst_object_unref(pipeline_v1);
-        // gst_object_unref (pipeline_v2);
+        gst_object_unref(pipeline_v1);        
         return 0;
     }
-
-
-    bus = gst_element_get_bus(pipeline_v1);
+*/
+  bus = gst_element_get_bus(pipeline_v1);
 
     
+  /* create a server instance */
+
+  GMainLoop *loop;
+  GstRTSPServer *server;
+  GstRTSPMediaMapping *mapping;
+  GstRTSPMediaFactory *factory;
+  server = gst_rtsp_server_new ();
+  mapping = gst_rtsp_server_get_media_mapping (server);
+  factory = gst_rtsp_media_factory_new ();
+  gst_rtsp_media_factory_set_shared(factory, TRUE);
+  // appsrc name=mysrc imxv4l2src device=/dev/video0 fps-n=30 
+  gst_rtsp_media_factory_set_launch (factory, "( appsrc name=mysrc ! vpuenc codec=6 ! rtph264pay name=pay0 pt=96  )");
+  g_signal_connect (factory, "media-configure", G_CALLBACK (&media_configure), app);
+  gst_rtsp_media_mapping_add_factory (mapping, "/test", factory);
+  g_object_unref (mapping);
+  gst_rtsp_server_attach (server,NULL);     
+
+/*
+gst_rtsp_media_factory_set_launch (factory,
+        "( appsrc name=mysrc ! videoconvert ! jpegenc ! rtpjpegpay
+name=pay0 pt=96 )");
+    g_signal_connect (factory, "media-configure", (GCallback)
+media_configure, app);
+    gst_rtsp_mount_points_add_factory (mountpoints, "/test", factory);
+*/
+
     loop = g_main_loop_new(NULL, FALSE);
-        
+
+
     GstAppSinkCallbacks callbacks = { NULL, new_preroll, new_buffer,
                                       new_buffer_list, { NULL } };
-    gst_app_sink_set_callbacks (GST_APP_SINK(sink_app), &callbacks, NULL, NULL);
+    gst_app_sink_set_callbacks (GST_APP_SINK(sink_app_1), &callbacks, NULL, NULL);
     
     CustomData data;
     data.loop = loop;
     data.pipeline = pipeline_v1;
-
-    
-    gst_app_sink_set_callbacks(GST_APP_SINK(sink_app), &callbacks, NULL, NULL);
-    g_signal_connect (udpsink, "client-added", G_CALLBACK (&add_cliden), NULL);
+   
+   // g_signal_connect (tcpserver, "client-added", G_CALLBACK (&add_cliden), NULL);
     
     guint bus_watch_id = gst_bus_add_watch(bus, bus_call, NULL);  
         
@@ -424,17 +659,25 @@ int main(int argc, char *argv[]) {
 
     g_main_loop_run(loop);
 
+/*
     gst_object_unref(tee_q1_pad);
     gst_object_unref(tee_q2_pad);
     gst_object_unref(q1_pad);
     gst_object_unref(q2_pad);
+*/
     gst_object_unref(bus);
 
     gst_element_set_state(pipeline_v1, GST_STATE_NULL);
     gst_object_unref(pipeline_v1);
 
     cvReleaseImage(&m_RGB);
-    delete buf_tmp;
 
+    delete buf_tmp;
+	
+    printf("Thread cancel\n");
+    rc = pthread_cancel(thread);
+    pthread_attr_destroy(&attr); 
+    //pthread_exit(NULL);
+    close(sockfd);
     return 0;
 }

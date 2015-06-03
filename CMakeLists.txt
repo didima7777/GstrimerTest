@@ -6,8 +6,9 @@ set(CMAKE_CXX_FLAGS "-std=c++11")  ## standart
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")        ## Optimize
 set(CMAKE_EXE_LINKER_FLAGS "-s ")  ## Strip binary
 
-#set(MYLIBS "-lgstapp-1.0 -lgstbase-1.0 -lgstreamer-1.0")
-set(MYLIBS "-lgstreamer-0.10 -lgstapp-0.10 -lgstbase-0.10")  
+#set(MYLIBS "-lgstapp-1.0 -lgstbase-1.0 -lgstreamer-1.0 -lgstsdp-1.0 -lgstrtsp-1.0 ")
+#set(MYLIBS "-lgstreamer-0.10 -lgstapp-0.10 -lgstbase-0.10")  
+set(MYLIBS "-lgstreamer-0.10 -lgstapp-0.10 -lgstbase-0.10 -lgstsdp-0.10 -lgstrtsp-0.10 ")  
 set(MYLIBS "${MYLIBS} -lgobject-2.0 -lgmodule-2.0 -pthread -lgthread-2.0 -pthread -lglib-2.0 -lxml2")
 set(MYLIBS "${MYLIBS} -pthread  -fpermissive")
 set(MYLIBS "${MYLIBS} -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_flann -lopencv_features2d -lopencv_calib3d -lopencv_video")		
@@ -26,15 +27,21 @@ include_directories(${SDKTARGETSYSROOT}/usr/include/glib-2.0)
 include_directories(${SDKTARGETSYSROOT}/usr/lib/glib-2.0/include)
 include_directories(${SDKTARGETSYSROOT}/usr/include/libxml2)
 include_directories( ${OpenCV_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS2})
+include_directories(gst-server-lib)
 
+#set (APP_NAME  test_gst_tcp)
+set (APP_NAME  test_gst_server)
 
-set  (APP_NAME test_gst)
+file(GLOB_RECURSE GstSever_SOURCES "gst-server-lib/*.c")
+file(GLOB_RECURSE GstSever_HEADERS "gst-server-lib/*.h")
+
 
 set (HEADERS  Counter.h bmp.h)
 
 list(APPEND SRC  test_gst.cpp)
 list(APPEND SRC  Counter.cpp)
 list(APPEND SRC  bmp.cpp)
+list(APPEND SRC  ${GstSever_SOURCES})
 #list(APPEND SRC  )
 #list(APPEND SRC  )
 #list(APPEND SRC  )
