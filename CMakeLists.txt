@@ -36,15 +36,17 @@ file(GLOB_RECURSE GstSever_SOURCES "gst-server-lib/*.c")
 file(GLOB_RECURSE GstSever_HEADERS "gst-server-lib/*.h")
 file(GLOB_RECURSE htpp_requast_SOURCES "http_requast/*.cpp")
 file(GLOB_RECURSE htpp_requast_HEADERS "http_requast/*.h")
+file(GLOB_RECURSE Counting_SOURCES "Counting/*.cpp")
+file(GLOB_RECURSE Counting_HEADERS "Counting/*.h")
 
 
-set (HEADERS  Counter.h bmp.h ${GstSever_SOURCES} ${htpp_requast_SOURCES})
+set (HEADERS  bmp.h ${GstSever_SOURCES} ${htpp_requast_SOURCES} ${Counting_HEADERS})
 
 list(APPEND SRC  test_gst.cpp)
-list(APPEND SRC  Counter.cpp)
 list(APPEND SRC  bmp.cpp)
 list(APPEND SRC  ${GstSever_SOURCES})
 list(APPEND SRC  ${htpp_requast_SOURCES})
+list(APPEND SRC  ${Counting_SOURCES})
 #list(APPEND SRC  )
 #list(APPEND SRC  )
 

@@ -21,7 +21,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 
-#include "Counter.h"
+#include "Counting/Counter.h"
 #include "opencv2/video/background_segm.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -316,13 +316,10 @@ static void
 need_data (GstElement *appsrc, guint unused, Context *ctx)
 {
     GstFlowReturn ret;
-//    GstBuffer* buffer;
-//     buffer =  gst_app_sink_pull_buffer (GST_APP_SINK(ctx->glblapp->videosink));
-
-//     printf("need\n");
+//  GstBuffer* buffer;
+//  buffer =  gst_app_sink_pull_buffer (GST_APP_SINK(ctx->glblapp->videosink));
 
     if (buffer_rtp) {
-//        printf("need data OK\n");
         GST_BUFFER_TIMESTAMP(buffer_rtp) = ctx->timestamp;
         GST_BUFFER_DURATION (buffer_rtp) = gst_util_uint64_scale_int (1,GST_SECOND, 30);
         ctx->timestamp += GST_BUFFER_DURATION (buffer_rtp);
@@ -341,15 +338,6 @@ static void media_configure (GstRTSPMediaFactory *factory, GstRTSPMedia *media, 
     appsrc = gst_bin_get_by_name_recurse_up (GST_BIN (pipeline), "mysrc");
     gst_rtsp_media_set_reusable(media, TRUE);
     gst_util_set_object_arg (G_OBJECT (appsrc), "format", "time");
-//  g_object_set (G_OBJECT (appsrc), "caps",gst_caps_from_string(videocaps), NULL);
-/*
-    g_object_set (G_OBJECT (appsrc), "caps",
-    gst_caps_new_simple ("video/x-raw-yuvs",
-     "format", G_TYPE_STRING, "RGB16",
-     "width", G_TYPE_INT, 640,
-     "height", G_TYPE_INT, 480,
-     "framerate", GST_TYPE_FRACTION, 500, 167, NULL), NULL);
-*/
     g_object_set(G_OBJECT(appsrc), "max-bytes", gst_app_src_get_max_bytes(GST_APP_SRC(appsrc)), NULL);
     ctx = g_new0 (Context, 1);
     ctx->glblapp = app;
@@ -456,7 +444,6 @@ void process_command(int sock)
 	set_gain(value);
     break;	
    }
-   //currentCount
    bzero(buffer,256);
    sprintf(buffer,"I got your message %d \n",currentCount);
    n = write(sock,buffer,strlen(buffer));
@@ -528,19 +515,14 @@ int main(int argc, char *argv[]) {
     gst_app_sink_set_drop(GST_APP_SINK (app->videosink), TRUE);
     gst_app_sink_set_max_buffers(GST_APP_SINK (app->videosink), 1);
 
-
-
     sink_file = gst_element_factory_make("filesink", "filesink");
     g_object_set(G_OBJECT(sink_file), "location", "t1.jpeg", NULL);
     
     videotee = gst_element_factory_make("tee", "videotee");
 
     g_object_set(G_OBJECT(source), "device", "/dev/video0", NULL);
-    //  g_object_set( G_OBJECT(source), "num-buffers", "-1", NULL);
-    //  g_object_set( G_OBJECT(source), "capture-mode", 0, NULL); 
-      g_object_set( G_OBJECT(source), "fps-n", "30", NULL); 
-
-
+//  g_object_set( G_OBJECT(source), "capture-mode", 0, NULL); 
+    g_object_set( G_OBJECT(source), "fps-n", "30", NULL); 
 
     pipeline_v1 = gst_pipeline_new("cam-pipeline");
     pipeline_v2 = gst_pipeline_new("cam-pipeline");
@@ -636,37 +618,27 @@ int main(int argc, char *argv[]) {
   // appsrc name=mysrc imxv4l2src device=/dev/video0 fps-n=30 
   gst_rtsp_media_factory_set_launch (factory, "( appsrc name=mysrc ! vpuenc codec=6 ! rtph264pay name=pay0 pt=96  )");
   g_signal_connect (factory, "media-configure", G_CALLBACK (&media_configure), app);
-  gst_rtsp_media_mapping_add_factory (mapping, "/test", factory);
+  gst_rtsp_media_mapping_add_factory (mapping, "/videocam", factory);
   g_object_unref (mapping);
   gst_rtsp_server_attach (server,NULL);     
 
-/*
-gst_rtsp_media_factory_set_launch (factory,
-        "( appsrc name=mysrc ! videoconvert ! jpegenc ! rtpjpegpay
-name=pay0 pt=96 )");
-    g_signal_connect (factory, "media-configure", (GCallback)
-media_configure, app);
-    gst_rtsp_mount_points_add_factory (mountpoints, "/test", factory);
-*/
 
-    loop = g_main_loop_new(NULL, FALSE);
+  loop = g_main_loop_new(NULL, FALSE);
 
 
-    GstAppSinkCallbacks callbacks = { NULL, new_preroll, new_buffer,
+   GstAppSinkCallbacks callbacks = { NULL, new_preroll, new_buffer,
                                       new_buffer_list, { NULL } };
-    gst_app_sink_set_callbacks (GST_APP_SINK(sink_app_1), &callbacks, NULL, NULL);
+   gst_app_sink_set_callbacks (GST_APP_SINK(sink_app_1), &callbacks, NULL, NULL);
     
-    CustomData data;
-    data.loop = loop;
-    data.pipeline = pipeline_v1;
-   
-   // g_signal_connect (tcpserver, "client-added", G_CALLBACK (&add_cliden), NULL);
-    
-    guint bus_watch_id = gst_bus_add_watch(bus, bus_call, NULL);  
+   CustomData data;
+   data.loop = loop;
+   data.pipeline = pipeline_v1;
+       
+   guint bus_watch_id = gst_bus_add_watch(bus, bus_call, NULL);  
         
-    ret = gst_element_set_state(pipeline_v1, GST_STATE_PLAYING);
+   ret = gst_element_set_state(pipeline_v1, GST_STATE_PLAYING);
 
-    g_main_loop_run(loop);
+   g_main_loop_run(loop);
 
 /*
     gst_object_unref(tee_q1_pad);
