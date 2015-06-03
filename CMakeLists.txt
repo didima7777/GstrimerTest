@@ -38,15 +38,18 @@ file(GLOB_RECURSE htpp_requast_SOURCES "http_requast/*.cpp")
 file(GLOB_RECURSE htpp_requast_HEADERS "http_requast/*.h")
 file(GLOB_RECURSE Counting_SOURCES "Counting/*.cpp")
 file(GLOB_RECURSE Counting_HEADERS "Counting/*.h")
+file(GLOB_RECURSE CamConfig_SOURCES "cam-config/*.cpp")
+file(GLOB_RECURSE CamConfig_HEADERS "cam-config/*.h")
 
 
-set (HEADERS  bmp.h ${GstSever_SOURCES} ${htpp_requast_SOURCES} ${Counting_HEADERS})
+set (HEADERS  bmp.h ${GstSever_SOURCES} ${htpp_requast_SOURCES} ${Counting_HEADERS} ${CamConfig_HEADERS})
 
 list(APPEND SRC  test_gst.cpp)
 list(APPEND SRC  bmp.cpp)
 list(APPEND SRC  ${GstSever_SOURCES})
 list(APPEND SRC  ${htpp_requast_SOURCES})
 list(APPEND SRC  ${Counting_SOURCES})
+list(APPEND SRC  ${CamConfig_SOURCES})
 #list(APPEND SRC  )
 #list(APPEND SRC  )
 

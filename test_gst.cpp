@@ -26,6 +26,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "gst-server-lib/rtsp-server.h"
+#include "cam-config/camconfig.h"
 
 int default_exposure=500;
 int fd_video;
@@ -80,32 +81,6 @@ static void new_oes(GstAppSink *sink, gpointer user_data) {
     printf("###### eos #######\n");
 }
 
-
-void set_exposure(int exp) {
-	v4l2_control par_exp;
-	par_exp.id=V4L2_CID_EXPOSURE;
-	par_exp.value=exp;
-	if (ioctl(fd_video, VIDIOC_S_CTRL, &par_exp) < 0)
-	{
-		printf("\nVIDIOC_S_CTRL failed\n");
-	} else {
-	 printf("shutter %d \n",par_exp.value);
-	}
-}
-
-
-void set_gain(int gain) {
-	v4l2_control par_exp;
-	par_exp.id=V4L2_CID_GAIN;
-	par_exp.value=gain;
-	if (ioctl(fd_video, VIDIOC_S_CTRL, &par_exp) < 0)
-	{
-		printf("\nVIDIOC_S_CTRL failed\n");
-	} else {
-	 printf("gain %d \n",par_exp.value);
-	}
-}
-
 static GstFlowReturn new_preroll(GstAppSink *sink, gpointer user_data) {
 	printf("#####  new_preroll #######!!!\n");
 	fd_video=0;
@@ -120,7 +95,7 @@ static GstFlowReturn new_preroll(GstAppSink *sink, gpointer user_data) {
 	printf("\nTV decoder chip is %s !!!!\n", chip.match.name);
 	}
 */
-	set_exposure(default_exposure);
+	set_exposure(default_exposure,fd_video);
         GstBuffer *buffer =  gst_app_sink_pull_preroll (sink);
         if (buffer) {
           print_buffer(buffer, "preroll");
@@ -243,15 +218,14 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer user_data) {
             if (strcmp(msg->src->name,"source")==0) {
                 if (strcmp(gst_element_state_get_name(new_state),"READY")==0) {
                     g_object_get (G_OBJECT (source), "file-id", &fd_video, NULL);
-		    //printf("video file %d \n",fd_video);
+/*
 		    struct v4l2_dbg_chip_ident chip;
 	   	    if (ioctl(fd_video, VIDIOC_DBG_G_CHIP_IDENT, &chip))
   			printf("\nVIDIOC_DBG_G_CHIP_IDENT failed.\n");
 		   else 
  		    printf("\nTV decoder chip is %s !!!!\n", chip.match.name);		
-		    //set_exposure(shutter);
- 		    //set_gain(gain);                    
-                }
+*/
+              }
             }
             break;
         }
@@ -438,10 +412,10 @@ void process_command(int sock)
    sscanf(buffer,"%c %d",&cmd,&value);
    switch(cmd){
    case 's':
-	set_exposure(value);
+	set_exposure(value,fd_video);
     break;	
    case 'g': 
-	set_gain(value);
+	set_gain(value,fd_video);
     break;	
    }
    bzero(buffer,256);
