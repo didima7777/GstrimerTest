@@ -104,9 +104,6 @@ static GstFlowReturn new_preroll(GstAppSink *sink, gpointer user_data) {
    return GST_FLOW_OK;
 }
 
-IplImage *frame = NULL;
-IplImage *m_RGB = NULL;
-unsigned char *buf_tmp = NULL;
 GMutex mutex;
 Counter *cnter;
 
@@ -145,14 +142,70 @@ GstBuffer* buffer;
 GstBuffer* buffer_rtp;
 unsigned char flag_rtp=0;
 
+IplImage *frame = NULL;
+IplImage *m_RGB = NULL;
+unsigned char *buf_tmp = NULL;
+
+char name[30];
+int cnt = 0;
+
+void test_counting(){
+	printf("Try open file: video_test1.avi\n");
+
+	sprintf(name,"bmp/cap%d.bmp",cnt);
+	cv::VideoCapture vidCapture(name);
+
+	cv::Mat frame;
+	printf("get first cap\n"); 
+	vidCapture >> frame;
+	cv::Size frameSize = frame.size();	
+
+	std::ifstream confZone("conf.txt");
+
+	printf("Read config \n"); 
+
+	cv::Mat detectionZone(4, 1, CV_32FC2);
+	int x, y;
+	confZone >> x;
+	confZone >> y;
+	cv::Point2f pt1(x, y);
+	detectionZone.at<cv::Point2f>(0) = pt1;
+	confZone >> x;
+	confZone >> y;
+	cv::Point2f pt2(x, y);
+	detectionZone.at<cv::Point2f>(1) = pt2;
+	confZone >> x;
+	confZone >> y;
+	cv::Point2f pt3(x, y);
+	detectionZone.at<cv::Point2f>(2) = pt3;
+	confZone >> x;
+	confZone >> y;
+	cv::Point2f pt4(x, y);
+	detectionZone.at<cv::Point2f>(3) = pt4;
+
+	int stripeNum = 1;
+	double stripeThr = 0.1;
+
+	Counter cnter(detectionZone, frameSize, stripeNum, stripeThr,0);
+	printf("Start processing \n");
+	while (cnt < 187)
+	{		
+		int currentCount = cnter.processFrame(frame);
+		std::cout << cnt << " " << currentCount << std::endl;
+		cnt++;
+		sprintf(name,"bmp/cap%d.bmp",cnt);
+		cv::VideoCapture vidCapture(name);
+		vidCapture >> frame;
+	}	
+
+} 
+
 static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
     int height =480; //480;//1944;
     int width = 640;//640;//2592;
     static int  cnt=0;
     static int expo=1;
 	
-
-
     g_mutex_lock(&mutex);
     buffer =  gst_app_sink_pull_buffer (sink);
     if (flag_rtp==1) buffer_rtp = buffer;//gst_buffer_copy (buffer);
@@ -165,24 +218,20 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
             convert(buf_tmp, m_RGB->imageData, height * width);
 	    cv::Mat frame=cv::Mat(480,640,CV_8UC3,m_RGB->imageData);
 
-     	    if (cnt++>100) {
-		//printf("inc expo %d\n",expo);
-		//set_gain(expo);
-	    	//set_exposure(expo);
-		expo+=2;
-		printf("!!!\n");
+     	    if (cnt++>30*10) {
+                //run thread send http GET  
    	 	cnt=0;
 	    }
 
     	    currentCount = cnter->processFrame(frame);
 //	    sprintf(name_file,"cap%d.bmp",cnt++);
 // 	    cv::Mat mat_img(m_RGB);
-//           cv::imwrite(name_file, mat_img);
+//          cv::imwrite(name_file, mat_img);
 //          mat_img.release();
 //          cvReleaseImage(&m_RGB);
 
-        gst_buffer_unref(buffer);
-//        printf("!!!\n");
+           gst_buffer_unref(buffer);
+
     }
     g_mutex_unlock(&mutex);
     return GST_FLOW_OK;
@@ -350,6 +399,7 @@ void almost_c99_signal_handler(int signum)
     default:
       fputs("Caught SIGTERM: a termination request was sent to the program\n",
             stderr);
+      _Exit(1);
       break;
   }
   _Exit(1);
@@ -426,7 +476,7 @@ void process_command(int sock)
 
 
 
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
 
 
     /* Initialize GStreamer */
@@ -445,9 +495,19 @@ int main(int argc, char *argv[]) {
    void *status;
    App *app = &s_app;
 
+   int debug=0;
+
+   if (argc>1) {
+   sscanf(argv[1],"%d",&debug);
+	   if (debug) {
+		   test_counting();
+		   return 0; 
+	    }
+    }
    /* Initialize and set thread detached attribute */
 
    t=0;
+   printf("Start gstreamer 0.1 and Counting\n");	
    pthread_attr_init(&attr);
    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
    rc = pthread_create(&thread, &attr, server, (void *)t); 
@@ -456,7 +516,7 @@ int main(int argc, char *argv[]) {
     std::string pathToConfig = "confZone1.txt";
     init_counting(pathToConfig);
 
-    printf("Start gstreamer 0.1 and Counting\n");	
+
     source = gst_element_factory_make("imxv4l2src", "source cam");
     queue1 = gst_element_factory_make("queue", "queue1");
     queue2 = gst_element_factory_make("queue", "queue2");
@@ -632,7 +692,7 @@ int main(int argc, char *argv[]) {
     printf("Thread cancel\n");
     rc = pthread_cancel(thread);
     pthread_attr_destroy(&attr); 
-    //pthread_exit(NULL);
     close(sockfd);
+    pthread_exit(NULL);
     return 0;
 }

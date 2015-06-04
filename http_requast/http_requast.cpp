@@ -67,10 +67,37 @@ void getResponse() {
 	}
 }
 
-int http_requast(char* hostname,char *requast){
-	if (setupSocket(hostname)<0) return -1; 
-	if (connectToHost(hostname)<0 ) return -1;
-	if (sendRequest(hostname,requast)<0) return -1;
+typedef struct _http_requast_data{
+	char* hostname;
+	char *requast;
+} http_requast_data;
+
+void* simple_http_requast(void *_data){
+        
+        http_requast_data *data=(http_requast_data *)_data;	
+	if (setupSocket(data->hostname)<0) goto free_resource; 
+	if (connectToHost(data->hostname)<0 ) goto free_resource;
+	if (sendRequest(data->hostname,data->requast)<0) goto free_resource;
 	getResponse();
-	return 0;
+        free_resource :{
+	 delete data->hostname;	
+	 delete data->requast;
+        }
+	return NULL;
+	
+}
+
+pthread_t th;
+http_requast_data data;
+
+int send_http_requast(char* hostname,char* requast){
+
+  data.hostname=new char[strlen(hostname)];
+  data.requast=new char[strlen(requast)];
+
+  strcpy(data.hostname,hostname);
+  strcpy(data.requast,requast);
+
+  pthread_create(&th,NULL,simple_http_requast,&data);
+
 }

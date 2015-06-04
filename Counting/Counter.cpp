@@ -65,12 +65,9 @@ Counter::Counter(cv::Mat& detectionZone, cv::Size& frameSize,  int stripeNumber,
 
 Counter::~Counter()
 {
-	if (debugVideo)
-	{
-		vidWriter->release();
-		delete vidWriter;
-	}
 }
+
+char name_bmp[30];
 
 void Counter::bgSubtractionCycle(cv::Mat& inpFrame)
 {
@@ -83,9 +80,13 @@ void Counter::bgSubtractionCycle(cv::Mat& inpFrame)
 
 	for (int i = 0; i < 3; i++)
 	{
-		//cv::imwrite("1.bmp", inputFrameCh[i]);	
+// 		sprintf(name_bmp,"cap_befor%d.bmp",i);
+//		cv::imwrite(name_bmp, inputFrameCh[i]);	
+
 		(*bgSubtractors[i])(inputFrameCh[i], *fgMasks[i], 0.00005);
-		//cv::imwrite("2.bmp", *fgMasks[i]);
+
+// 		sprintf(name_bmp,"cap_after%d.bmp",i);
+//		cv::imwrite(name_bmp, *fgMasks[i]);
 	}
 	cv::bitwise_or(*fgMasks[0], *fgMasks[1], *fgMask1);
 	cv::bitwise_or(*fgMask1, *fgMasks[2], *fgMask);
