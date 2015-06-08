@@ -59,6 +59,7 @@ float aG=0.1;
 int E=E0;
 int G=G0;
 int Cth=127;
+int Enc,Gnc;
 
 void init_coeff(app_cfg *appCfg){
 	E0=appCfg->E0;
@@ -72,7 +73,8 @@ void init_coeff(app_cfg *appCfg){
 	aE=appCfg->aE;
 	aG=appCfg->aG;
 	Cth=appCfg->Cn;
-	printf("Cth %d \n",Cth);
+	Gnc=G0;
+	Enc=E0;
 }
 
 typedef struct _exposure_data{
@@ -83,7 +85,6 @@ typedef struct _exposure_data{
 } exposure_data;
 
 void *correctEandG(void *data) {
-    int Enc,Gnc;
     static int En_1=E0;
     static int Gn_1=G0;
 
@@ -94,20 +95,20 @@ void *correctEandG(void *data) {
     int CmeanN=(int)(cvMean(0)+cvMean(1)+cvMean(2))/3;
 
     if (CmeanN > Cth) {
-	En_1=E;
-        printf("1 mean = %d !! %d + %f -->>",CmeanN, En_1 ,(aE)* ka * (Cth - CmeanN));
-        Enc =   En_1 + aE * ka * (Cth - CmeanN);
-        printf(" Enc %d\n",Enc);
-        if (Enc < Emax && Enc > Emin) {
-		E = Enc;
+        if (Gnc < Gmax && Gnc > Gmin) {
+  	  Gn_1=G;
+          printf("1 G mean = %d !! %d + %f -->>",CmeanN, Gn_1 ,(aG)* kg * (Cth - CmeanN));
+          Gnc =  Gn_1 + (1 - aG) * kg * (Cth - CmeanN);
+          G = Gnc;
+	} else {
+ 	  En_1=E;
+          printf("1 E mean = %d !! %d + %f -->>",CmeanN, En_1 ,(aE)* ka * (Cth - CmeanN));
+          Enc =   En_1 + aE * ka * (Cth - CmeanN);
+          printf(" Enc %d\n",Enc);
+          if (Enc < Emax && Enc > Emin) {
+	   E = Enc;
+	  }
 	}
-        else {
-  	    Gn_1=G;
-            Gnc =  Gn_1 + (1 - aG) * kg * (Cth - CmeanN);
-            if (Gnc < Gmax && Gnc > Gmin) {
-              G = Gnc;
-	    }
-        }
     } else {
         En_1=E;
         printf("2 mean = %d !! %d + %f -->>",CmeanN, En_1 ,((aE) * ka * (Cth - CmeanN)));
@@ -117,6 +118,7 @@ void *correctEandG(void *data) {
 	  E = Enc;
 	} else {
           Gn_1=G;
+          printf("2 G mean = %d !! %d + %f -->>",CmeanN, Gn_1 ,(aG)* kg * (Cth - CmeanN));
 	  Gnc =  Gn_1 + (1 - aG) * kg * (Cth - CmeanN);
 	  if (Gnc > Gmin && Gnc < Gmax){
 		    G = Gnc;

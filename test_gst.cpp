@@ -141,7 +141,8 @@ void init_counting(std::string& pathToConfig){
 }
 
 char name_file[30];
-int currentCount;
+unsigned long int currentCount=0;
+unsigned long int old_currentCount=0;
 GstBuffer* buffer;
 GstBuffer* buffer_rtp;
 unsigned char flag_rtp=0;
@@ -232,10 +233,16 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
 	    }
 	    if (cnt_http++>30*AppCfg.timeout_send_data){
 		sprintf(str_http_send,"count=%d",currentCount);
+		printf("%s\n",str_http_send);
 		send_http_requast(AppCfg.url,str_http_send);
+		cnt_http=0;
    	    }
 
     	    currentCount = cnter->processFrame(frame);
+	    if (old_currentCount!=currentCount) {
+		printf("counting = %ld\n",currentCount);
+		old_currentCount=currentCount;
+	    }
 //	    sprintf(name_file,"cap%d.bmp",cnt++);
 // 	    cv::Mat mat_img(m_RGB);
 //          cv::imwrite(name_file, mat_img);
