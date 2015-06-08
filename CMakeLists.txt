@@ -40,9 +40,13 @@ file(GLOB_RECURSE Counting_SOURCES "Counting/*.cpp")
 file(GLOB_RECURSE Counting_HEADERS "Counting/*.h")
 file(GLOB_RECURSE CamConfig_SOURCES "cam-config/*.cpp")
 file(GLOB_RECURSE CamConfig_HEADERS "cam-config/*.h")
+file(GLOB_RECURSE AutoExpo_SOURCES "autoexposure/*.cpp")
+file(GLOB_RECURSE AutoExpo_HEADERS "autoexposure/*.h")
+file(GLOB_RECURSE ReadConf_SOURCES "readconfig/*.cpp")
+file(GLOB_RECURSE ReadConf_HEADERS "readconfig/*.h")
 
 
-set (HEADERS  bmp.h ${GstSever_SOURCES} ${htpp_requast_SOURCES} ${Counting_HEADERS} ${CamConfig_HEADERS})
+set (HEADERS  bmp.h ${GstSever_SOURCES} ${htpp_requast_SOURCES} ${Counting_HEADERS} ${CamConfig_HEADERS} ${AutoExpo_HEADERS} ${ReadConf_HEADERS})
 
 list(APPEND SRC  test_gst.cpp)
 list(APPEND SRC  bmp.cpp)
@@ -50,6 +54,8 @@ list(APPEND SRC  ${GstSever_SOURCES})
 list(APPEND SRC  ${htpp_requast_SOURCES})
 list(APPEND SRC  ${Counting_SOURCES})
 list(APPEND SRC  ${CamConfig_SOURCES})
+list(APPEND SRC  ${AutoExpo_SOURCES})
+list(APPEND SRC  ${ReadConf_SOURCES})
 #list(APPEND SRC  )
 #list(APPEND SRC  )
 

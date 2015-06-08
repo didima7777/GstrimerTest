@@ -27,11 +27,15 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include "gst-server-lib/rtsp-server.h"
 #include "cam-config/camconfig.h"
+#include "autoexposure/autoexposure.h"
+#include "readconfig/read_config.h"
+#include "readconfig/read_config.h"
+#include "http_requast/http_requast.h"
 
 int default_exposure=500;
 int fd_video;
 GMainLoop *loop;
-
+app_cfg AppCfg;
 
 
 typedef struct _CustomData {
@@ -148,6 +152,7 @@ unsigned char *buf_tmp = NULL;
 
 char name[30];
 int cnt = 0;
+int cnt_http = 0;
 
 void test_counting(){
 	printf("Try open file: video_test1.avi\n");
@@ -200,6 +205,8 @@ void test_counting(){
 
 } 
 
+char str_http_send[256];
+
 static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
     int height =480; //480;//1944;
     int width = 640;//640;//2592;
@@ -218,10 +225,15 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
             convert(buf_tmp, m_RGB->imageData, height * width);
 	    cv::Mat frame=cv::Mat(480,640,CV_8UC3,m_RGB->imageData);
 
-     	    if (cnt++>30*10) {
+     	    if (cnt++>30*AppCfg.timeout_exposure) {
                 //run thread send http GET  
+		proseccingEG(frame,fd_video);
    	 	cnt=0;
 	    }
+	    if (cnt_http++>30*AppCfg.timeout_send_data){
+		sprintf(str_http_send,"count=%d",currentCount);
+		send_http_requast(AppCfg.url,str_http_send);
+   	    }
 
     	    currentCount = cnter->processFrame(frame);
 //	    sprintf(name_file,"cap%d.bmp",cnt++);
@@ -475,7 +487,6 @@ void process_command(int sock)
 }
 
 
-
 int main(int argc, char **argv) {
 
 
@@ -506,6 +517,9 @@ int main(int argc, char **argv) {
     }
    /* Initialize and set thread detached attribute */
 
+   config_read(&AppCfg);
+   init_coeff(&AppCfg);
+	
    t=0;
    printf("Start gstreamer 0.1 and Counting\n");	
    pthread_attr_init(&attr);
