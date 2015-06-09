@@ -52,7 +52,7 @@ typedef struct _CustomData {
     GstElement *pipeline_v1, *pipeline_v2;
     GstElement *source, *sink_app_1,*sink_app_2, *sink_file, *csp, *enc, *videotee, *parser,*gdppay;
     GstElement *queue1, *queue2;
-    GstElement *rtp, *udpsink, *fakesink,*tcpserver;
+    GstElement *rtp, *udpsink, *fakesink,*tcpserver,*matroskamux;
 
 
 void print_buffer (GstBuffer *buffer, const char *title);
@@ -249,7 +249,7 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
 	    if (old_currentCount!=currentCount) {
 		printf("counting = %ld\n",currentCount);
 		old_currentCount=currentCount;
-	 	    sprintf(name_file,"cap_cnt_%d.bmp",currentCount);
+	 	    sprintf(name_file,"result/cap_cnt_%d.bmp",currentCount);
 	 	    cv::Mat mat_img(m_RGB);
 		    cv::imwrite(name_file, mat_img);
 		    mat_img.release();
@@ -578,20 +578,24 @@ int main(int argc, char **argv) {
     gst_app_sink_set_drop(GST_APP_SINK (app->videosink), TRUE);
     gst_app_sink_set_max_buffers(GST_APP_SINK (app->videosink), 1);
 
+    matroskamux=gst_element_factory_make("matroskamux", "matroskamux");
     sink_file = gst_element_factory_make("filesink", "filesink");
-    g_object_set(G_OBJECT(sink_file), "location", "t1.jpeg", NULL);
-    
+    g_object_set(G_OBJECT(sink_file), "location", "video.mkv", NULL);
+    g_object_set(G_OBJECT(sink_file), "sync", FALSE, NULL);
+
     videotee = gst_element_factory_make("tee", "videotee");
 
     g_object_set(G_OBJECT(source), "device", "/dev/video0", NULL);
 //  g_object_set( G_OBJECT(source), "capture-mode", 0, NULL); 
     g_object_set( G_OBJECT(source), "fps-n", "30", NULL); 
 
+
+
     pipeline_v1 = gst_pipeline_new("cam-pipeline");
     pipeline_v2 = gst_pipeline_new("cam-pipeline");
 
 
-    if (!pipeline_v1 || !pipeline_v2 || !source || !sink_app_1 || !sink_app_2 || !sink_file || !queue1 || !queue2 || !videotee || !enc || !parser || !tcpserver || !udpsink) {
+    if (!pipeline_v1 || !pipeline_v2 || !source || !sink_app_1 || !sink_app_2 || !sink_file || !queue1 || !queue2 || !videotee || !enc || !matroskamux) {
         g_printerr("Not pipeline element could be created.\n");
         return -1;
     }
@@ -609,17 +613,19 @@ int main(int argc, char **argv) {
     };
 
 
-    //gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2, sink_app, enc, rtp,tcpserver, parser, NULL);
-    //gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2, sink_app, enc, rtp,udpsink, parser, NULL);
-    //gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2 , sink_app_1,fakesink,  NULL);
-    gst_bin_add_many(GST_BIN(pipeline_v1), source,  queue1, sink_app_1,  NULL);
 
+    gst_bin_add_many(GST_BIN(pipeline_v1), source,  queue1, sink_app_1,  NULL);
     if (!gst_element_link_many(source, queue1 , sink_app_1, NULL)) {
         gst_object_unref(pipeline_v1);        
         g_critical("Unable to link src to csp ");
         exit(1);
     }
 /*
+    //gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2, sink_app, enc, rtp,tcpserver, parser, NULL);
+    //gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2, sink_app_1, enc, rtp,udpsink, parser, NULL);
+    //gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2 , sink_app_1,fakesink,  NULL);
+    gst_bin_add_many(GST_BIN(pipeline_v1), source, videotee, queue1, queue2 , sink_app_1,enc, matroskamux,sink_file, NULL);
+
     if (!gst_element_link_many(source, videotee, NULL)) {
         gst_object_unref(pipeline_v1);        
         g_critical("Unable to link src to csp ");
@@ -633,8 +639,7 @@ int main(int argc, char **argv) {
 
 //    if (!gst_element_link_many(queue2, enc, parser, rtp, tcpserver, NULL)) { //enc,rtp, udpsink
 //    if (!gst_element_link_many(queue2, enc, parser, rtp, udpsink, NULL)) { //enc,rtp, udpsink
-
-    if (!gst_element_link_many(queue2, fakesink, NULL)) { //enc,rtp, udpsink
+     if (!gst_element_link_many(queue2, enc,matroskamux,sink_file, NULL)) { //enc,rtp, udpsink
         printf("Cannot link gstreamer elements 2\n");
         exit(1);
     }
@@ -665,12 +670,13 @@ int main(int argc, char **argv) {
         return 0;
     }
 */
+
   bus = gst_element_get_bus(pipeline_v1);
 
     
   /* create a server instance */
 
-  GMainLoop *loop;
+
   GstRTSPServer *server;
   GstRTSPMediaMapping *mapping;
   GstRTSPMediaFactory *factory;
@@ -678,7 +684,6 @@ int main(int argc, char **argv) {
   mapping = gst_rtsp_server_get_media_mapping (server);
   factory = gst_rtsp_media_factory_new ();
   gst_rtsp_media_factory_set_shared(factory, TRUE);
-  // appsrc name=mysrc imxv4l2src device=/dev/video0 fps-n=30 
   gst_rtsp_media_factory_set_launch (factory, "( appsrc name=mysrc ! vpuenc codec=6 ! rtph264pay name=pay0 pt=96  )");
   g_signal_connect (factory, "media-configure", G_CALLBACK (&media_configure), app);
   gst_rtsp_media_mapping_add_factory (mapping, "/videocam", factory);

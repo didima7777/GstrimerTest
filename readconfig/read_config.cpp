@@ -21,38 +21,68 @@
     float aG;
  */
 
+void read_number_int(FILE *f,int *n){
+    int d;
+    char inStr[1024];
+    char *paserStr;
+
+    fscanf(f, "%s", inStr);
+    paserStr=strchr(inStr,'=');
+    sscanf(paserStr+1, "%d", &d);
+    printf("%d \n",d);
+    *n=d;
+}
+
+void read_number_float(FILE *f,float *n){
+    float d;
+    char inStr[1024];
+    char *paserStr;
+
+    fscanf(f, "%s", inStr);
+    paserStr=strchr(inStr,'=');
+    sscanf(paserStr+1, "%f", &d);
+    printf("%f \n",d);
+    *n=d;
+}
+
 void config_read(app_cfg *appCfg){
 
     FILE *f;
+    char inStr[1024];
     char str_url[1024];
+    char *paserStr;
 
     f=fopen("cam.cfg","r");
 
     if (f){
-        fscanf(f,"%s",str_url);
-        int len=strlen(str_url);
-        appCfg->url=0;
-        appCfg->url=new char[len];
-        strcpy(appCfg->url,str_url);
-        fscanf(f,"%d",&appCfg->type_connect);
-        fscanf(f,"%d",&appCfg->timeout_send_data);
-        fscanf(f,"%d",&appCfg->id);
-        fscanf(f,"%d",&appCfg->gpio);
-        fscanf(f,"%d",&appCfg->Cn);
-        fscanf(f,"%d",&appCfg->E0);
-        fscanf(f,"%d",&appCfg->G0);
+        fscanf(f, "%s", inStr);
+        paserStr=strchr(inStr,'=');
+        sscanf(paserStr+1, "%s", str_url);
+        appCfg->url = 0;
+        int len = strlen(str_url);
+        appCfg->url = new char[len];
+        strcpy(appCfg->url, str_url);
+        printf("%s\n",appCfg->url);
 
-        fscanf(f,"%d",&appCfg->Emin);
-        fscanf(f,"%d",&appCfg->Emax);
-        fscanf(f,"%d",&appCfg->Gmin);
-        fscanf(f,"%d",&appCfg->Gmax);
+        read_number_int(f,&appCfg->type_connect);
+        read_number_int(f,&appCfg->timeout_send_data);
 
+        read_number_int(f,&appCfg->id);
+        read_number_int(f,&appCfg->gpio);
+        read_number_int(f,&appCfg->Cn);
+        read_number_int(f,&appCfg->E0);
+        read_number_int(f,&appCfg->G0);
 
-        fscanf(f,"%f",&appCfg->ka);
-        fscanf(f,"%f",&appCfg->kg);
-        fscanf(f,"%f",&appCfg->aE);
-        fscanf(f,"%f",&appCfg->aG);
-        fscanf(f,"%d",&appCfg->timeout_exposure);
+        read_number_int(f,&appCfg->Emin);
+        read_number_int(f,&appCfg->Emax);
+        read_number_int(f,&appCfg->Gmin);
+        read_number_int(f,&appCfg->Gmax);
+
+        read_number_float(f,&appCfg->ka);
+        read_number_float(f,&appCfg->kg);
+        read_number_float(f,&appCfg->aE);
+        read_number_float(f,&appCfg->aG);
+        read_number_int(f,&appCfg->timeout_exposure);
     }
     fclose(f);
 }
