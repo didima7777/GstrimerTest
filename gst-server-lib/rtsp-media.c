@@ -74,6 +74,13 @@ static guint gst_rtsp_media_signals[SIGNAL_LAST] = { 0 };
 
 G_DEFINE_TYPE (GstRTSPMedia, gst_rtsp_media, G_TYPE_OBJECT);
 
+static  GMainLoop    *Mloop=0;
+static  GThread      *Mthread=0;
+
+GMainLoop    *get_rtsp_loop(void){
+return Mloop;
+} 
+
 static void
 gst_rtsp_media_class_init (GstRTSPMediaClass * klass)
 {
@@ -123,10 +130,12 @@ gst_rtsp_media_class_init (GstRTSPMediaClass * klass)
 
   klass->context = g_main_context_new ();
   klass->loop = g_main_loop_new (klass->context, TRUE);
+  Mloop=klass->loop;
 
   GST_DEBUG_CATEGORY_INIT (rtsp_media_debug, "rtspmedia", 0, "GstRTSPMedia");
 
   klass->thread = g_thread_create ((GThreadFunc) do_loop, klass, TRUE, &error);
+  Mthread=klass->thread;
   if (error != NULL) {
     g_critical ("could not start bus thread: %s", error->message);
   }

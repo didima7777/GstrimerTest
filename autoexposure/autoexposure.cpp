@@ -92,13 +92,14 @@ void *correctEandG(void *data) {
     exposure_data *frame_data=(exposure_data*)data;
 
     Scalar cvMean=mean(frame_data->frame);
-    int CmeanN=(int)(cvMean(0)+cvMean(1)+cvMean(2))/3;
+    int CmeanN=(int)(cvMean(0));//+cvMean(1)+cvMean(2))/3;
 
     if (CmeanN > Cth) {
         if (Gnc < Gmax && Gnc > Gmin) {
   	  Gn_1=G;
           printf("1 G mean = %d !! %d + %f -->>",CmeanN, Gn_1 ,(aG)* kg * (Cth - CmeanN));
           Gnc =  Gn_1 + (1 - aG) * kg * (Cth - CmeanN);
+	  printf(" Gnc %d\n",Gnc);
           G = Gnc;
 	} else {
  	  En_1=E;
@@ -120,6 +121,7 @@ void *correctEandG(void *data) {
           Gn_1=G;
           printf("2 G mean = %d !! %d + %f -->>",CmeanN, Gn_1 ,(aG)* kg * (Cth - CmeanN));
 	  Gnc =  Gn_1 + (1 - aG) * kg * (Cth - CmeanN);
+	  printf(" Gnc %d\n",Gnc);
 	  if (Gnc > Gmin && Gnc < Gmax){
 		    G = Gnc;
 	  }  

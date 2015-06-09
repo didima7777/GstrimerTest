@@ -265,6 +265,7 @@ struct _GstRTSPMediaClass {
 };
 
 GType                 gst_rtsp_media_get_type         (void);
+GMainLoop    *get_rtsp_loop(void);
 
 /* creating the media */
 GstRTSPMedia *        gst_rtsp_media_new              (void);
@@ -309,6 +310,7 @@ gboolean              gst_rtsp_media_set_state        (GstRTSPMedia *media, GstS
 void                  gst_rtsp_media_remove_elements  (GstRTSPMedia *media);
 
 void                  gst_rtsp_media_trans_cleanup    (GstRTSPMediaTrans *trans);
+
 
 G_END_DECLS
 

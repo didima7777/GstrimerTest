@@ -101,3 +101,36 @@ write_bmp(const char *filename, int width, int height, char *rgb)
 
     return(1);
 }
+
+int V4LWrapper_CvtColor (char *buffer_in, char *buffer_out, int width, int height)
+{
+ int step = width;
+ char *data = buffer_in; 
+ int size = width * height;
+ float Y;
+
+for (int i = 0; i<height; i++)
+{
+  for (int j=0; j<width; j++)
+  {
+    Y = data[i*step + j];
+
+    float U = data[ (int)(size + (i/2)*(step/2)  + j/2) ];
+    float V = data[ (int)(size*1.25 + (i/2)*(step/2) + j/2)];
+
+    float R = Y + 1.402 * (V - 128);
+    float G = Y - 0.344 * (U - 128) - 0.714 * (V - 128);
+    float B = Y + 1.772 * (U - 128);
+
+    if (R < 0){ R = 0; } if (G < 0){ G = 0; } if (B < 0){ B = 0; }
+    if (R > 255 ){ R = 255; } if (G > 255) { G = 255; } if (B > 255) { B = 255; }
+		
+    buffer_out[3*(i*step + j)+0]=B;
+    buffer_out[3*(i*step + j)+1]=G;
+    buffer_out[3*(i*step + j)+2]=R;
+
+  }
+}
+
+	return 0;
+}

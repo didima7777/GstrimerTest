@@ -31,6 +31,7 @@
 #include "readconfig/read_config.h"
 #include "readconfig/read_config.h"
 #include "http_requast/http_requast.h"
+#include "bmp.h"
 
 int default_exposure=500;
 int fd_video;
@@ -149,6 +150,7 @@ unsigned char flag_rtp=0;
 
 IplImage *frame = NULL;
 IplImage *m_RGB = NULL;
+IplImage *m_Y = NULL;
 unsigned char *buf_tmp = NULL;
 
 char name[30];
@@ -221,14 +223,19 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
     if (buffer) {
             unsigned char *pData=(unsigned char*)GST_BUFFER_DATA(buffer);
             if (m_RGB==NULL) m_RGB = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3);
+	    if (m_Y==NULL) m_Y = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
             if (buf_tmp ==NULL) buf_tmp=new unsigned char[width*height*3];
             memcpy((void*)buf_tmp,(void*)pData,width*height*1.5);
-            convert(buf_tmp, m_RGB->imageData, height * width);
+
+//            convert(buf_tmp, m_RGB->imageData, height * width);
+	    V4LWrapper_CvtColor((char*)buf_tmp, (char*)m_RGB->imageData,width,height);
+
 	    cv::Mat frame=cv::Mat(480,640,CV_8UC3,m_RGB->imageData);
 
      	    if (cnt++>30*AppCfg.timeout_exposure) {
                 //run thread send http GET  
-		proseccingEG(frame,fd_video);
+   	        cv::Mat frame_exposure=cv::Mat(480,640,CV_8UC1,(char*)buf_tmp);
+		proseccingEG(frame_exposure,fd_video);
    	 	cnt=0;
 	    }
 	    if (cnt_http++>30*AppCfg.timeout_send_data){
@@ -242,15 +249,13 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
 	    if (old_currentCount!=currentCount) {
 		printf("counting = %ld\n",currentCount);
 		old_currentCount=currentCount;
+	 	    sprintf(name_file,"cap_cnt_%d.bmp",currentCount);
+	 	    cv::Mat mat_img(m_RGB);
+		    cv::imwrite(name_file, mat_img);
+		    mat_img.release();
+		    cvReleaseImage(&m_RGB);
 	    }
-//	    sprintf(name_file,"cap%d.bmp",cnt++);
-// 	    cv::Mat mat_img(m_RGB);
-//          cv::imwrite(name_file, mat_img);
-//          mat_img.release();
-//          cvReleaseImage(&m_RGB);
-
            gst_buffer_unref(buffer);
-
     }
     g_mutex_unlock(&mutex);
     return GST_FLOW_OK;
@@ -405,10 +410,13 @@ void almost_c99_signal_handler(int signum)
     case SIGILL:
       fputs("Caught SIGILL: illegal instruction\n", stderr);
       break;
-    case SIGINT:
+    case SIGINT:{
       fputs("Caught SIGINT: interactive attention signal, probably a ctrl+c!!!!\n",
             stderr);
       g_main_loop_quit(loop);
+      GMainLoop	*tmp_loop=get_rtsp_loop();
+      if (tmp_loop!=0)	      g_main_loop_quit(tmp_loop);
+      }
       return ;
       break;
     case SIGSEGV:
