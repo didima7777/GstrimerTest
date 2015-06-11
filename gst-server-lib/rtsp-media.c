@@ -72,14 +72,15 @@ static void unlock_streams (GstRTSPMedia * media);
 
 static guint gst_rtsp_media_signals[SIGNAL_LAST] = { 0 };
 
-G_DEFINE_TYPE (GstRTSPMedia, gst_rtsp_media, G_TYPE_OBJECT);
-
 static  GMainLoop    *Mloop=0;
 static  GThread      *Mthread=0;
 
 GMainLoop    *get_rtsp_loop(void){
 return Mloop;
 } 
+
+
+G_DEFINE_TYPE (GstRTSPMedia, gst_rtsp_media, G_TYPE_OBJECT);
 
 static void
 gst_rtsp_media_class_init (GstRTSPMediaClass * klass)
