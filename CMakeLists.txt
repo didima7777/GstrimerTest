@@ -44,9 +44,15 @@ file(GLOB_RECURSE AutoExpo_SOURCES "autoexposure/*.cpp")
 file(GLOB_RECURSE AutoExpo_HEADERS "autoexposure/*.h")
 file(GLOB_RECURSE ReadConf_SOURCES "readconfig/*.cpp")
 file(GLOB_RECURSE ReadConf_HEADERS "readconfig/*.h")
+file(GLOB_RECURSE GPRS_SOURCES "gpio/*.cpp")
+file(GLOB_RECURSE GPRS_HEADERS "gpio/*.h")
+file(GLOB_RECURSE GPIO_SOURCES "gprs/*.cpp")
+file(GLOB_RECURSE GPIO_HEADERS "gprs/*.h")
 
 
-set (HEADERS  bmp.h ${GstSever_SOURCES} ${htpp_requast_SOURCES} ${Counting_HEADERS} ${CamConfig_HEADERS} ${AutoExpo_HEADERS} ${ReadConf_HEADERS})
+
+
+set (HEADERS  bmp.h ${GstSever_SOURCES} ${htpp_requast_SOURCES} ${Counting_HEADERS} ${CamConfig_HEADERS} ${AutoExpo_HEADERS} ${ReadConf_HEADERS} ${GPIO_HEADERS} ${GPRS_HEADERS})
 
 list(APPEND SRC  test_gst.cpp)
 list(APPEND SRC  bmp.cpp)
@@ -56,8 +62,8 @@ list(APPEND SRC  ${Counting_SOURCES})
 list(APPEND SRC  ${CamConfig_SOURCES})
 list(APPEND SRC  ${AutoExpo_SOURCES})
 list(APPEND SRC  ${ReadConf_SOURCES})
-#list(APPEND SRC  )
-#list(APPEND SRC  )
+list(APPEND SRC  ${GPIO_SOURCES})
+list(APPEND SRC  ${GPRS_SOURCES})
 
 MESSAGE( STATUS "CMAKE_BINARY_DIR:        " ${CMAKE_BINARY_DIR} )
 MESSAGE( STATUS "CMAKE_INCLUDE_PATH: 	  " ${CMAKE_INCLUDE_PATH} )
