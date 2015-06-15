@@ -574,7 +574,7 @@ int main(int argc, char **argv) {
 
     sink_app_1 = gst_element_factory_make("appsink", "appsink 1");
     sink_app_2 = gst_element_factory_make("appsink", "appsink 2");
-    app->videosink = sink_app_2;
+    app->videosink = sink_app_1;
     gst_app_sink_set_drop(GST_APP_SINK (app->videosink), TRUE);
     gst_app_sink_set_max_buffers(GST_APP_SINK (app->videosink), 1);
 
@@ -683,7 +683,7 @@ int main(int argc, char **argv) {
   server = gst_rtsp_server_new ();
   mapping = gst_rtsp_server_get_media_mapping (server);
   factory = gst_rtsp_media_factory_new ();
-  gst_rtsp_media_factory_set_shared(factory, TRUE);
+//  gst_rtsp_media_factory_set_shared(factory, TRUE);
   gst_rtsp_media_factory_set_launch (factory, "( appsrc name=mysrc ! vpuenc codec=6 ! rtph264pay name=pay0 pt=96  )");
   g_signal_connect (factory, "media-configure", G_CALLBACK (&media_configure), app);
   gst_rtsp_media_mapping_add_factory (mapping, "/videocam", factory);
