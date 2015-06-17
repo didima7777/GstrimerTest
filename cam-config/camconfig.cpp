@@ -11,7 +11,7 @@ void set_exposure(int exp,int fd_video) {
 	{
 		printf("\nVIDIOC_S_CTRL failed\n");
 	} else {
-	 printf("shutter %d \n",par_exp.value);
+	// printf("shutter %d \n",par_exp.value);
 	}
 }
 
@@ -24,6 +24,6 @@ void set_gain(int gain,int fd_video) {
 	{
 		printf("\nVIDIOC_S_CTRL failed\n");
 	} else {
-	 printf("gain %d \n",par_exp.value);
+	 //printf("gain %d \n",par_exp.value);
 	}
 }

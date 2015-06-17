@@ -97,31 +97,31 @@ void *correctEandG(void *data) {
     if (CmeanN > Cth) {
         if (Gnc < Gmax && Gnc > Gmin) {
   	  Gn_1=G;
-          printf("1 G mean = %d !! %d + %f -->>",CmeanN, Gn_1 ,(aG)* kg * (Cth - CmeanN));
+          //printf("1 G mean = %d !! %d + %f -->>",CmeanN, Gn_1 ,(aG)* kg * (Cth - CmeanN));
           Gnc =  Gn_1 + (1 - aG) * kg * (Cth - CmeanN);
-	  printf(" Gnc %d\n",Gnc);
+	  //printf(" Gnc %d\n",Gnc);
           G = Gnc;
 	} else {
  	  En_1=E;
-          printf("1 E mean = %d !! %d + %f -->>",CmeanN, En_1 ,(aE)* ka * (Cth - CmeanN));
+          //printf("1 E mean = %d !! %d + %f -->>",CmeanN, En_1 ,(aE)* ka * (Cth - CmeanN));
           Enc =   En_1 + aE * ka * (Cth - CmeanN);
-          printf(" Enc %d\n",Enc);
+          //printf(" Enc %d\n",Enc);
           if (Enc < Emax && Enc > Emin) {
 	   E = Enc;
 	  }
 	}
     } else {
         En_1=E;
-        printf("2 mean = %d !! %d + %f -->>",CmeanN, En_1 ,((aE) * ka * (Cth - CmeanN)));
+        //printf("2 mean = %d !! %d + %f -->>",CmeanN, En_1 ,((aE) * ka * (Cth - CmeanN)));
         Enc = En_1 + aE * ka * (Cth - CmeanN);
-        printf(" Enc %d\n",Enc);
+        //printf(" Enc %d\n",Enc);
         if (Enc > Emin && Enc < Emax) {
 	  E = Enc;
 	} else {
           Gn_1=G;
-          printf("2 G mean = %d !! %d + %f -->>",CmeanN, Gn_1 ,(aG)* kg * (Cth - CmeanN));
+          //printf("2 G mean = %d !! %d + %f -->>",CmeanN, Gn_1 ,(aG)* kg * (Cth - CmeanN));
 	  Gnc =  Gn_1 + (1 - aG) * kg * (Cth - CmeanN);
-	  printf(" Gnc %d\n",Gnc);
+	  //printf(" Gnc %d\n",Gnc);
 	  if (Gnc > Gmin && Gnc < Gmax){
 		    G = Gnc;
 	  }  
@@ -132,7 +132,7 @@ void *correctEandG(void *data) {
     frame_data->G=G;
     set_exposure(frame_data->E,frame_data->fd);
     set_gain(frame_data->G,frame_data->fd);
-    printf("E = %d  G = %d \n",E,G);
+    //printf("E = %d  G = %d \n",E,G);
 };
 
 

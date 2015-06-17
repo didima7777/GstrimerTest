@@ -21,6 +21,8 @@
 #include <netinet/in.h>
 #include <pthread.h>
 
+#include <time.h>
+
 #include "Counting/Counter.h"
 #include "opencv2/video/background_segm.hpp"
 #include "opencv2/highgui/highgui.hpp"
@@ -37,7 +39,9 @@ int default_exposure=500;
 int fd_video;
 GMainLoop *loop;
 app_cfg AppCfg;
-
+FILE *fd_counting;
+time_t start_time;
+time_t now_time;  
 
 typedef struct _CustomData {
     gboolean is_live;
@@ -239,7 +243,8 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
    	 	cnt=0;
 	    }
 	    if (cnt_http++>30*AppCfg.timeout_send_data){
-		sprintf(str_http_send,"count=%d",currentCount);
+		time(&now_time);
+		sprintf(str_http_send,"count=%d&time_start=%d&time_now=%d",currentCount,start_time,now_time);
 		printf("%s\n",str_http_send);
 		send_http_requast(AppCfg.url,str_http_send);
 		cnt_http=0;
@@ -249,11 +254,16 @@ static GstFlowReturn new_buffer(GstAppSink *sink, gpointer user_data) {
 	    if (old_currentCount!=currentCount) {
 		printf("counting = %ld\n",currentCount);
 		old_currentCount=currentCount;
+                fseek ( fd_counting , 0 , SEEK_SET );
+                fprintf(fd_counting,"%ld",currentCount);
+		time(&now_time);
+/*
 	 	    sprintf(name_file,"result/cap_cnt_%d.bmp",currentCount);
 	 	    cv::Mat mat_img(m_RGB);
 		    cv::imwrite(name_file, mat_img);
 		    mat_img.release();
 		    cvReleaseImage(&m_RGB);
+*/
 	    }
            gst_buffer_unref(buffer);
     }
@@ -291,13 +301,6 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer user_data) {
             if (strcmp(msg->src->name,"source")==0) {
                 if (strcmp(gst_element_state_get_name(new_state),"READY")==0) {
                     g_object_get (G_OBJECT (source), "file-id", &fd_video, NULL);
-/*
-		    struct v4l2_dbg_chip_ident chip;
-	   	    if (ioctl(fd_video, VIDIOC_DBG_G_CHIP_IDENT, &chip))
-  			printf("\nVIDIOC_DBG_G_CHIP_IDENT failed.\n");
-		   else 
- 		    printf("\nTV decoder chip is %s !!!!\n", chip.match.name);		
-*/
               }
             }
             break;
@@ -318,24 +321,6 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer user_data) {
             break;
         default:
         {
-/*
-            printf("default \n");
-            const GstStructure *structure = gst_message_get_structure(msg);
-            if (structure) {
-                printf("%s{%s} ", gst_message_type_get_name(msg->type), gst_structure_get_name(structure));
-                for (i = 0; i < gst_structure_n_fields(structure); ++i) {
-                    if (i != 0) printf(", ");
-                    const char *name = gst_structure_nth_field_name(structure, i);
-                    GType type = gst_structure_get_field_type(structure, name);
-                    printf("%s", name);
-                    printf("[%s]", g_type_name(type));
-                }
-            printf("\n");
-            } else {
-                //printf("info: %i %s type: %i\n", (int) (msg->timestamp), GST_MESSAGE_TYPE_NAME(msg), msg->type);
-                // printf("%s{}\n", gst_message_type_get_name (msg->type));
-            }
-*/
             break;
         }
     }
@@ -345,7 +330,6 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer user_data) {
 void add_cliden (GstElement* object, gchararray arg0, gint arg1, gpointer user_data){
     printf("add clien \n");
 }
-
 
 typedef struct _App App;
 struct _App
@@ -376,11 +360,15 @@ need_data (GstElement *appsrc, guint unused, Context *ctx)
 
 }
 
+static GstRTSPMedia *rtsp_media;
+
 static void media_configure (GstRTSPMediaFactory *factory, GstRTSPMedia *media, App *app)
 {    
     Context *ctx;
     GstElement *pipeline;
     GstElement *appsrc;
+
+    rtsp_media=media;
     pipeline = gst_rtsp_media_get_element(media);
     appsrc = gst_bin_get_by_name_recurse_up (GST_BIN (pipeline), "mysrc");
     gst_rtsp_media_set_reusable(media, TRUE);
@@ -415,18 +403,28 @@ void almost_c99_signal_handler(int signum)
             stderr);
       g_main_loop_quit(loop);
       GMainLoop	*tmp_loop=get_rtsp_loop();
-      if (tmp_loop!=0)	      g_main_loop_quit(tmp_loop);
+      if (tmp_loop!=0)	      {
+	 g_main_loop_quit(tmp_loop); 
+         gst_rtsp_media_remove_elements(rtsp_media);
+	}
       }
       return ;
       break;
     case SIGSEGV:
       fputs("Caught SIGSEGV: segfault\n", stderr);
       break;
-    case SIGTERM:
-    default:
-      fputs("Caught SIGTERM: a termination request was sent to the program\n",
-            stderr);
-      _Exit(1);
+    case SIGTERM: 
+    default:{
+	      g_main_loop_quit(loop);
+	      GMainLoop	*tmp_loop=get_rtsp_loop();
+	      if (tmp_loop!=0)	      {
+		 g_main_loop_quit(tmp_loop); 
+		 gst_rtsp_media_remove_elements(rtsp_media);
+		}
+	      fputs("Caught SIGTERM: a termination request was sent to the program\n",
+		    stderr);
+	      return ;
+     }
       break;
   }
   _Exit(1);
@@ -701,7 +699,19 @@ int main(int argc, char **argv) {
    CustomData data;
    data.loop = loop;
    data.pipeline = pipeline_v1;
-       
+
+
+   fd_counting = fopen("counting.dat","r+");       
+   printf("open counting.dat %d \n",fd_counting);
+   if (fd_counting==0) {
+	fd_counting = fopen("counting.dat","w+");       
+	fprintf(fd_counting,"0");
+   } else{
+	fscanf(fd_counting,"%d",&currentCount);
+   }
+   printf("read counting.dat \n");
+   time(&start_time);
+
    guint bus_watch_id = gst_bus_add_watch(bus, bus_call, NULL);  
         
    ret = gst_element_set_state(pipeline_v1, GST_STATE_PLAYING);
